@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jarvis-config
+  namespace: jarvis
+data:
+  APP_NAME: "Jarvis"
+  APP_VERSION: "0.1.0"
+  API_PREFIX: "/api/v1"
+  OPENROUTER_BASE_URL: "https://openrouter.ai/api/v1"
+  OPENROUTER_MODEL: "deepseek/deepseek-r1-0528-qwen3-8b:free"
+  OPENROUTER_FALLBACK_MODELS: "deepseek/deepseek-v4-flash,deepseek/deepseek-v4-pro"
+  FRONTEND_URL: "http://jarvis.local"
+  OIDC_ISSUER: "http://auth.jarvis.local/realms/jarvis"
+  OIDC_AUDIENCE: "jarvis-frontend"
+  # In-cluster Service DNS — JWKS fetching is just a key lookup, it doesn't
+  # need to match the external issuer hostname (unlike OIDC_ISSUER above,
+  # which must match the "iss" claim string exactly).
+  OIDC_JWKS_URL: "http://keycloak.jarvis.svc.cluster.local:8080/realms/jarvis/protocol/openid-connect/certs"
+  OIDC_JWKS_CACHE_TTL_SECONDS: "3600"
+  LLM_CACHE: "false"

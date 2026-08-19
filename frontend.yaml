@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      # NextAuth/Auth.js makes real server-side HTTP calls to
+      # AUTH_KEYCLOAK_ISSUER (OIDC discovery on login, and the manual
+      # refresh-token call in src/auth.ts) — this pod needs auth.jarvis.local
+      # to actually resolve to something reachable in-cluster. Routed through
+      # the ingress controller's own ClusterIP so the pod takes the same path
+      # a real browser would. __INGRESS_IP__ is substituted by k8s/deploy.sh
+      # (unknown until the ingress addon is enabled).
+      hostAliases:
+        - ip: "__INGRESS_IP__"
+          hostnames:
+            - "auth.jarvis.local"
+      containers:
+        - name: frontend
+          image: jarvis-frontend:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            # NextAuth/Auth.js's own request-Host inference doesn't pick up
+            # the ingress-forwarded Host header on Next's standalone server —
+            # it falls back to the container's own HOSTNAME/PORT, producing
+            # self-referential URLs like http://0.0.0.0:3000/api/auth/... that
+            # a real browser can't follow. Verified live: without this,
+            # /api/auth/signin/keycloak built a redirect_uri of
+            # 0.0.0.0:3000 instead of jarvis.local, which Keycloak also
+            # wouldn't recognize as a registered client redirect URI. AUTH_URL
+            # is Auth.js's documented override for exactly this reverse-proxy
+            # scenario, taking priority over any header-based inference.
+            - name: AUTH_URL
+              value: "http://jarvis.local"
+          envFrom:
+            - secretRef:
+                name: jarvis-frontend-secrets
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: jarvis
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 3000
+      targetPort: 3000
