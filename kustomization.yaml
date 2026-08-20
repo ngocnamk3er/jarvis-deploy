@@ -20,10 +20,10 @@ resources:
 images:
 - name: jarvis-backend
   newName: host.minikube.internal:5050/root/jarvis/jarvis-backend
-  newTag: 9f4b5226
+  newTag: 5e42f607
 - name: jarvis-frontend
   newName: host.minikube.internal:5050/root/jarvis/jarvis-frontend
-  newTag: 9f4b5226
+  newTag: 5e42f607
 - name: jarvis-keycloak
   newName: host.minikube.internal:5050/root/jarvis/jarvis-keycloak
-  newTag: 9f4b5226
+  newTag: 5e42f607
