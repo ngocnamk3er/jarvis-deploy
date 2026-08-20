@@ -18,10 +18,15 @@ spec:
       # refresh-token call in src/auth.ts) — this pod needs auth.jarvis.local
       # to actually resolve to something reachable in-cluster. Routed through
       # the ingress controller's own ClusterIP so the pod takes the same path
-      # a real browser would. __INGRESS_IP__ is substituted by k8s/deploy.sh
-      # (unknown until the ingress addon is enabled).
+      # a real browser would. Hardcoded rather than templated (was
+      # __INGRESS_IP__, substituted live by k8s/deploy.sh) so this manifest
+      # is directly ArgoCD/GitOps-syncable — Jenkins never talks to the
+      # cluster, so it can't resolve this at CI time. ingress-nginx's
+      # ClusterIP is stable for the life of this cluster; only needs
+      # updating (`kubectl get svc ingress-nginx-controller -n ingress-nginx`)
+      # if the Service itself is ever deleted/recreated.
       hostAliases:
-        - ip: "__INGRESS_IP__"
+        - ip: "10.102.210.163"
           hostnames:
             - "auth.jarvis.local"
       containers:

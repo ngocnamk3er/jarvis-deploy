@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Same manifests k8s/deploy.sh applies (steps 3, 5-9) — secrets are
+# intentionally not listed here: deploy.sh creates them imperatively from
+# local .env files and they stay that way, not managed by ArgoCD/GitOps.
+resources:
+  - 00-namespace.yaml
+  - configmap.yaml
+  - postgres.yaml
+  - keycloak-postgres.yaml
+  - keycloak.yaml
+  - backend.yaml
+  - frontend.yaml
+  - ingress.yaml
+
+# Rewritten by the Jenkinsfile's "bump manifests" stage after each image
+# push (`kustomize edit set image ...`), so ArgoCD deploys the exact
+# commit-SHA-tagged image Jenkins just built — not floating :local tags.
+images:
+  - name: jarvis-backend
+    newName: host.minikube.internal:5050/root/jarvis/jarvis-backend
+    newTag: local
+  - name: jarvis-frontend
+    newName: host.minikube.internal:5050/root/jarvis/jarvis-frontend
+    newTag: local
+  - name: jarvis-keycloak
+    newName: host.minikube.internal:5050/root/jarvis/jarvis-keycloak
+    newTag: local

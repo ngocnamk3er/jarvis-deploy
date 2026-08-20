@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jarvis
+  namespace: argocd
+spec:
+  project: default
+  source:
+    # ArgoCD runs inside minikube; GitLab runs as docker-compose on the
+    # host, reached via minikube's built-in host.minikube.internal DNS
+    # (not gitlab.local, which only resolves via this machine's own
+    # /etc/hosts, not inside the minikube node).
+    repoURL: http://host.minikube.internal:8929/root/jarvis.git
+    targetRevision: main
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jarvis
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
