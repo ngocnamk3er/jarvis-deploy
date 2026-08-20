@@ -5,25 +5,25 @@ kind: Kustomization
 # intentionally not listed here: deploy.sh creates them imperatively from
 # local .env files and they stay that way, not managed by ArgoCD/GitOps.
 resources:
-  - 00-namespace.yaml
-  - configmap.yaml
-  - postgres.yaml
-  - keycloak-postgres.yaml
-  - keycloak.yaml
-  - backend.yaml
-  - frontend.yaml
-  - ingress.yaml
+- 00-namespace.yaml
+- configmap.yaml
+- postgres.yaml
+- keycloak-postgres.yaml
+- keycloak.yaml
+- backend.yaml
+- frontend.yaml
+- ingress.yaml
 
 # Rewritten by the Jenkinsfile's "bump manifests" stage after each image
 # push (`kustomize edit set image ...`), so ArgoCD deploys the exact
 # commit-SHA-tagged image Jenkins just built — not floating :local tags.
 images:
-  - name: jarvis-backend
-    newName: host.minikube.internal:5050/root/jarvis/jarvis-backend
-    newTag: local
-  - name: jarvis-frontend
-    newName: host.minikube.internal:5050/root/jarvis/jarvis-frontend
-    newTag: local
-  - name: jarvis-keycloak
-    newName: host.minikube.internal:5050/root/jarvis/jarvis-keycloak
-    newTag: local
+- name: jarvis-backend
+  newName: host.minikube.internal:5050/root/jarvis/jarvis-backend
+  newTag: 9878b684
+- name: jarvis-frontend
+  newName: host.minikube.internal:5050/root/jarvis/jarvis-frontend
+  newTag: 9878b684
+- name: jarvis-keycloak
+  newName: host.minikube.internal:5050/root/jarvis/jarvis-keycloak
+  newTag: 9878b684
