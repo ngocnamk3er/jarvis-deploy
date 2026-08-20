@@ -5,7 +5,7 @@ metadata:
   namespace: jarvis
 data:
   APP_NAME: "Jarvis"
-  APP_VERSION: "0.1.0"
+  APP_VERSION: "0.1.1"
   API_PREFIX: "/api/v1"
   OPENROUTER_BASE_URL: "https://openrouter.ai/api/v1"
   OPENROUTER_MODEL: "deepseek/deepseek-r1-0528-qwen3-8b:free"
