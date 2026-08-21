@@ -63,16 +63,22 @@ kubectl create secret docker-registry gitlab-registry-creds -n "$NS" \
 kubectl patch serviceaccount default -n "$NS" \
   -p '{"imagePullSecrets": [{"name": "gitlab-registry-creds"}]}'
 
-echo "==> 4/4  Registering this repo with ArgoCD"
-kubectl apply -f "$ROOT/argocd-application.yaml"
-kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced application/jarvis --timeout=120s
+echo "==> 4/4  Registering this repo's 4 Applications with ArgoCD"
+# One Application per service (backend/frontend/keycloak) plus one for
+# shared resources (namespace/configmap/postgres/ingress) — each syncs
+# independently, so a bump commit from one app's Jenkinsfile only touches
+# that app's own Application, not the others.
+kubectl apply -f "$ROOT/argocd/"
+for app in jarvis-shared jarvis-backend jarvis-frontend jarvis-keycloak; do
+  kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced "application/${app}" --timeout=120s
+done
 
 MINIKUBE_IP=$(minikube ip)
 cat <<EOF
 
 Done. ArgoCD now owns rolling out namespace/configmap/Postgres/Keycloak/
-backend/frontend/ingress from this repo (see argocd-application.yaml) —
-no more manual kubectl apply needed for those.
+backend/frontend/ingress from this repo (see argocd/*.yaml) — no more
+manual kubectl apply needed for those.
 
 Add this to /etc/hosts:
 

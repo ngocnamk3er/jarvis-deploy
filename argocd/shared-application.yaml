@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: jarvis
+  name: jarvis-shared
   namespace: argocd
 spec:
   project: default
@@ -12,7 +12,7 @@ spec:
     # /etc/hosts, not inside the minikube node).
     repoURL: http://host.minikube.internal:8929/root/jarvis-deploy.git
     targetRevision: main
-    path: .
+    path: shared
   destination:
     server: https://kubernetes.default.svc
     namespace: jarvis
