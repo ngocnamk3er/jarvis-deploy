@@ -10,4 +10,4 @@ resources:
 images:
 - name: jarvis-keycloak
   newName: host.minikube.internal:5050/root/jarvis-keycloak
-  newTag: f2b1fd13
+  newTag: b15b4814
