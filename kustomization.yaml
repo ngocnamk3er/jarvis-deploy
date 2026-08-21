@@ -27,7 +27,7 @@ images:
   newTag: 344b92d3
 - name: jarvis-frontend
   newName: host.minikube.internal:5050/root/jarvis-frontend
-  newTag: b78ed149
+  newTag: 655cea23
 - name: jarvis-keycloak
   newName: host.minikube.internal:5050/root/jarvis-keycloak
   newTag: f2b1fd13
