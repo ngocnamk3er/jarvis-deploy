@@ -10,4 +10,4 @@ resources:
 images:
 - name: jarvis-keycloak
   newName: 192.168.1.61:5050/root/jarvis-keycloak
-  newTag: b15b4814
+  newTag: 6d867774
