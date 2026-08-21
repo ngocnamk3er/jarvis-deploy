@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
-# Deploy the full Jarvis stack (Postgres x2, Keycloak, backend, frontend)
-# to a local minikube cluster. Idempotent — safe to re-run.
+# One-time bootstrap for the Jarvis stack on a local minikube cluster:
+# cluster/ingress, secrets (never GitOps-managed — see kustomization.yaml),
+# and registering this repo with ArgoCD. Everything else (namespace,
+# configmap, Postgres, Keycloak, backend, frontend, ingress) is applied
+# automatically by ArgoCD once the Application below is registered — this
+# script no longer builds or applies those directly (backend/frontend/
+# keycloak now live in their own repos with their own Jenkins pipelines;
+# see jarvis-backend, jarvis-frontend, jarvis-keycloak).
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NS=jarvis
 
-echo "==> 1/9  Ensuring minikube is running"
+echo "==> 1/4  Ensuring minikube is running"
 if ! minikube status >/dev/null 2>&1; then
   minikube start
 fi
@@ -17,24 +23,15 @@ kubectl wait --namespace ingress-nginx \
   --selector=app.kubernetes.io/component=controller \
   --timeout=180s
 
-echo "==> 2/9  Building images into minikube's docker daemon"
-eval "$(minikube docker-env)"
-docker build -t jarvis-backend:local "$ROOT/backend"
-docker build \
-  --build-arg NEXT_PUBLIC_API_URL=http://api.jarvis.local \
-  --build-arg NEXT_PUBLIC_KEYCLOAK_ISSUER=http://auth.jarvis.local/realms/jarvis \
-  -t jarvis-frontend:local "$ROOT/frontend"
-docker build -t jarvis-keycloak:local "$ROOT/keycloak"
+echo "==> 2/4  Namespace"
+kubectl apply -f "$ROOT/00-namespace.yaml"
 
-echo "==> 3/9  Namespace"
-kubectl apply -f "$ROOT/k8s/00-namespace.yaml"
-
-echo "==> 4/9  Secrets (reusing local backend/.env + frontend/.env.local)"
+echo "==> 3/4  Secrets (reusing local .env files from each app repo, if present as siblings)"
 set -a
 # shellcheck disable=SC1091
-[ -f "$ROOT/backend/.env" ] && source "$ROOT/backend/.env"
+[ -f "$ROOT/../jarvis-backend/.env" ] && source "$ROOT/../jarvis-backend/.env"
 # shellcheck disable=SC1091
-[ -f "$ROOT/frontend/.env.local" ] && source "$ROOT/frontend/.env.local"
+[ -f "$ROOT/../jarvis-frontend/.env.local" ] && source "$ROOT/../jarvis-frontend/.env.local"
 set +a
 
 kubectl create secret generic jarvis-secrets -n "$NS" \
@@ -58,34 +55,26 @@ kubectl create secret generic jarvis-keycloak-secrets -n "$NS" \
   --from-literal=KC_DB_PASSWORD="keycloak" \
   --dry-run=client -o yaml | kubectl apply -f -
 
-echo "==> 5/9  ConfigMap + Postgres instances"
-kubectl apply -f "$ROOT/k8s/configmap.yaml"
-kubectl apply -f "$ROOT/k8s/postgres.yaml"
-kubectl apply -f "$ROOT/k8s/keycloak-postgres.yaml"
-kubectl -n "$NS" rollout status statefulset/postgres --timeout=120s
-kubectl -n "$NS" rollout status statefulset/keycloak-postgres --timeout=120s
+kubectl create secret docker-registry gitlab-registry-creds -n "$NS" \
+  --docker-server="host.minikube.internal:5050" \
+  --docker-username="root" \
+  --docker-password="${GITLAB_REGISTRY_TOKEN:?set GITLAB_REGISTRY_TOKEN to a GitLab access token with read_registry scope}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl patch serviceaccount default -n "$NS" \
+  -p '{"imagePullSecrets": [{"name": "gitlab-registry-creds"}]}'
 
-echo "==> 6/9  Keycloak"
-kubectl apply -f "$ROOT/k8s/keycloak.yaml"
-kubectl -n "$NS" rollout status deployment/keycloak --timeout=300s
-
-echo "==> 7/9  Backend"
-kubectl apply -f "$ROOT/k8s/backend.yaml"
-kubectl -n "$NS" rollout status deployment/backend --timeout=180s
-
-echo "==> 8/9  Frontend"
-INGRESS_IP=$(kubectl get svc ingress-nginx-controller -n ingress-nginx \
-  -o jsonpath='{.spec.clusterIP}')
-sed "s/__INGRESS_IP__/${INGRESS_IP}/" "$ROOT/k8s/frontend.yaml" | kubectl apply -f -
-kubectl -n "$NS" rollout status deployment/frontend --timeout=180s
-
-echo "==> 9/9  Ingress"
-kubectl apply -f "$ROOT/k8s/ingress.yaml"
+echo "==> 4/4  Registering this repo with ArgoCD"
+kubectl apply -f "$ROOT/argocd-application.yaml"
+kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced application/jarvis --timeout=120s
 
 MINIKUBE_IP=$(minikube ip)
 cat <<EOF
 
-Done. Add this to /etc/hosts:
+Done. ArgoCD now owns rolling out namespace/configmap/Postgres/Keycloak/
+backend/frontend/ingress from this repo (see argocd-application.yaml) —
+no more manual kubectl apply needed for those.
+
+Add this to /etc/hosts:
 
   ${MINIKUBE_IP}  jarvis.local api.jarvis.local auth.jarvis.local
 

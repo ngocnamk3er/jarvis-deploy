@@ -10,9 +10,9 @@ spec:
     # host, reached via minikube's built-in host.minikube.internal DNS
     # (not gitlab.local, which only resolves via this machine's own
     # /etc/hosts, not inside the minikube node).
-    repoURL: http://host.minikube.internal:8929/root/jarvis.git
+    repoURL: http://host.minikube.internal:8929/root/jarvis-deploy.git
     targetRevision: main
-    path: k8s
+    path: .
   destination:
     server: https://kubernetes.default.svc
     namespace: jarvis
