@@ -24,7 +24,7 @@ resources:
 images:
 - name: jarvis-backend
   newName: host.minikube.internal:5050/root/jarvis-backend
-  newTag: b78ed149
+  newTag: 344b92d3
 - name: jarvis-frontend
   newName: host.minikube.internal:5050/root/jarvis-frontend
   newTag: b78ed149
