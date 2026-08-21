@@ -9,5 +9,5 @@ resources:
 # pattern.
 images:
 - name: jarvis-frontend
-  newName: host.minikube.internal:5050/root/jarvis-frontend
+  newName: 192.168.1.61:5050/root/jarvis-frontend
   newTag: e07efee5
