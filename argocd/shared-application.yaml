@@ -7,10 +7,14 @@ spec:
   project: default
   source:
     # ArgoCD runs inside minikube; GitLab runs as docker-compose on the
-    # host, reached via minikube's built-in host.minikube.internal DNS
-    # (not gitlab.local, which only resolves via this machine's own
-    # /etc/hosts, not inside the minikube node).
-    repoURL: http://host.minikube.internal:8929/root/jarvis-deploy.git
+    # host. Uses the host's real LAN IP rather than minikube's
+    # host.minikube.internal alias — that alias only resolves inside this
+    # one minikube node's own Docker network, so it breaks the moment
+    # ArgoCD's cluster and GitLab aren't on the same physical machine. A
+    # real routable IP (or a real DNS name, in production) works either
+    # way. Caveat: this is a DHCP-assigned address, so it can change if
+    # the router reassigns it — re-update here if that ever happens.
+    repoURL: http://192.168.1.61:8929/root/jarvis-deploy.git
     targetRevision: main
     path: shared
   destination:
