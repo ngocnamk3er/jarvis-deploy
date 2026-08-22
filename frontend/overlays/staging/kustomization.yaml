@@ -11,11 +11,11 @@ resources:
 images:
 - name: jarvis-frontend
   newName: host.minikube.internal:5050/root/jarvis-frontend
-  newTag: staging-manual
+  newTag: f3bab216
 
 patches:
 - path: deployment-patch.yaml
-- target:
+- path: hostaliases-patch.yaml
+  target:
     kind: Deployment
     name: frontend
-  path: hostaliases-patch.yaml
