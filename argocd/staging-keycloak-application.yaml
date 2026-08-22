@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jarvis-staging-keycloak
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://host.minikube.internal:8929/root/jarvis-deploy.git
+    targetRevision: staging
+    path: keycloak
+  destination:
+    server: https://host.minikube.internal:18443
+    namespace: jarvis
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
