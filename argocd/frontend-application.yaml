@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: http://192.168.1.61:8929/root/jarvis-deploy.git
+    repoURL: http://host.minikube.internal:8929/root/jarvis-deploy.git
     targetRevision: main
     path: frontend
   destination:

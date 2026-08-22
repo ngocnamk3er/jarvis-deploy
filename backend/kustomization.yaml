@@ -10,5 +10,5 @@ resources:
 # commit-SHA-tagged image that pipeline just built — not a floating tag.
 images:
 - name: jarvis-backend
-  newName: 192.168.1.61:5050/root/jarvis-backend
+  newName: host.minikube.internal:5050/root/jarvis-backend
   newTag: 344b92d3
