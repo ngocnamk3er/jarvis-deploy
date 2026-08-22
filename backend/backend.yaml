@@ -23,7 +23,7 @@ spec:
           command: ["alembic", "upgrade", "head"]
           envFrom:
             - configMapRef:
-                name: jarvis-config
+                name: backend-config
             - secretRef:
                 name: jarvis-secrets
       containers:
@@ -34,7 +34,7 @@ spec:
             - containerPort: 8000
           envFrom:
             - configMapRef:
-                name: jarvis-config
+                name: backend-config
             - secretRef:
                 name: jarvis-secrets
           readinessProbe:

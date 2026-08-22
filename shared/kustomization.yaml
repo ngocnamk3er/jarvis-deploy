@@ -1,14 +1,19 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Resources shared across services (namespace, config, both Postgres
+# Resources genuinely shared across services (namespace, both Postgres
 # instances, ingress) — nothing here is bumped by any app's Jenkinsfile,
 # so this Application syncs independently and rarely changes. Secrets are
 # intentionally not listed here: deploy.sh creates them imperatively from
 # local .env files and they stay that way, not managed by ArgoCD/GitOps.
+#
+# App config (backend-config, etc.) deliberately does NOT live here —
+# each service's own ConfigMap lives in that service's own directory
+# (see backend/configmap.yaml), even if none of the others need one yet.
+# Only backend actually consumes a ConfigMap today; frontend/keycloak
+# take their non-secret config as inline env in their own Deployment.
 resources:
 - 00-namespace.yaml
-- configmap.yaml
 - postgres.yaml
 - keycloak-postgres.yaml
 - ingress.yaml

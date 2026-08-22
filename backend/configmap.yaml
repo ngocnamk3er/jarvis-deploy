@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: jarvis-config
+  name: backend-config
   namespace: jarvis
 data:
   APP_NAME: "Jarvis"

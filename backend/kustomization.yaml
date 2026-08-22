@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
 - backend.yaml
+- configmap.yaml
 
 # Rewritten by jarvis-backend's own Jenkinsfile "Bump manifest" stage
 # after each image push (`kustomize edit set image ...` against a clone
