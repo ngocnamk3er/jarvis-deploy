@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+
+# JSON6902 rather than a strategic-merge patch: Ingress's rules[] list
+# has no merge key Kubernetes recognizes, so a strategic-merge patch
+# would replace the whole list rather than touching just 3 host fields.
+patches:
+- target:
+    kind: Ingress
+    name: jarvis
+  path: ingress-hosts-patch.yaml

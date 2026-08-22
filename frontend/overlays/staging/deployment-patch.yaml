@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: jarvis
+spec:
+  template:
+    spec:
+      # Strategic-merge: containers[] merges by name, env[] merges by
+      # name — so this only overrides AUTH_URL, not the rest of the pod
+      # spec. hostAliases is handled separately (see hostaliases-patch.yaml)
+      # since its merge key is "ip", which differs here — a strategic
+      # merge would append a second entry instead of replacing the base's.
+      containers:
+        - name: frontend
+          env:
+            - name: AUTH_URL
+              value: "http://staging.jarvis.local"

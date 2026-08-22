@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: http://host.minikube.internal:8929/root/jarvis-deploy.git
     targetRevision: main
-    path: keycloak
+    path: keycloak/overlays/test
   destination:
     server: https://kubernetes.default.svc
     namespace: jarvis

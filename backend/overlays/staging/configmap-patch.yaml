@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: jarvis
+data:
+  FRONTEND_URL: "http://staging.jarvis.local"
+  OIDC_ISSUER: "http://auth.staging.jarvis.local/realms/jarvis"

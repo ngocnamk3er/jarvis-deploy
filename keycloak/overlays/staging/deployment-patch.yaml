@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: jarvis
+spec:
+  template:
+    spec:
+      # env[] merges by name — this only overrides KC_HOSTNAME.
+      containers:
+        - name: keycloak
+          env:
+            - name: KC_HOSTNAME
+              value: "auth.staging.jarvis.local"

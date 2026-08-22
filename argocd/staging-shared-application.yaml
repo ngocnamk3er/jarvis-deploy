@@ -6,17 +6,18 @@ metadata:
 spec:
   project: default
   source:
-    # Same repo/content as the test Applications, but tracking the
-    # "staging" branch instead of "main" — staging only picks up a new
-    # commit when that branch is explicitly updated (merge main->staging,
-    # or a future "promote" Jenkins job), never automatically on every
-    # push to an app repo. See staging branch's own commit for why the
-    # hostnames in this path diverge from main (shared external /etc/hosts
-    # on one machine can't map jarvis.local to two different cluster IPs
-    # at once).
+    # Same repo/branch as the test Applications — the difference from
+    # test lives in the PATH, not the branch: shared/overlays/staging is
+    # a Kustomize overlay on top of shared/base, patching just the 3
+    # hostnames that must differ from test (shared external /etc/hosts on
+    # one machine can't map jarvis.local to two different cluster IPs at
+    # once — see shared/overlays/staging/ingress-hosts-patch.yaml).
+    # Promotion = bumping an overlay's image tag with `kustomize edit set
+    # image`, never a git merge — so it can't conflict with these patches
+    # (they live in files main's own commits never touch).
     repoURL: http://host.minikube.internal:8929/root/jarvis-deploy.git
-    targetRevision: staging
-    path: shared
+    targetRevision: main
+    path: shared/overlays/staging
   destination:
     # Registered via a Secret in this Application's own "argocd" namespace
     # (argocd.argoproj.io/secret-type: cluster, name: staging) pointing at

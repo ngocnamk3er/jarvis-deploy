@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- backend.yaml
+- configmap.yaml
+
+# No images: transformer here on purpose — the image tag differs per
+# environment, so it's set in each overlay (overlays/test, overlays/staging)
+# instead. Jenkins's "Bump manifest" stage now runs `kustomize edit set
+# image` inside overlays/test specifically, never here.

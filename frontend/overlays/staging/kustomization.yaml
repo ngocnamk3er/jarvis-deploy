@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+
+# Promote by running `kustomize edit set image` here, copying whatever
+# tag overlays/test is currently running — never a git merge from main.
+# Currently pinned to the manually-built image (see frontend/Jenkinsfile
+# note) until Jenkins gets a proper per-environment build stage.
+images:
+- name: jarvis-frontend
+  newName: host.minikube.internal:5050/root/jarvis-frontend
+  newTag: staging-manual
+
+patches:
+- path: deployment-patch.yaml
+- target:
+    kind: Deployment
+    name: frontend
+  path: hostaliases-patch.yaml

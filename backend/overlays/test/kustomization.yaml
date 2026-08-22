@@ -2,13 +2,12 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-- backend.yaml
-- configmap.yaml
+- ../../base
 
 # Rewritten by jarvis-backend's own Jenkinsfile "Bump manifest" stage
-# after each image push (`kustomize edit set image ...` against a clone
-# of this repo, run from this directory), so ArgoCD deploys the exact
-# commit-SHA-tagged image that pipeline just built — not a floating tag.
+# after each image push (`kustomize edit set image ...` run from this
+# directory), so ArgoCD deploys the exact commit-SHA-tagged image that
+# pipeline just built — not a floating tag.
 images:
 - name: jarvis-backend
   newName: host.minikube.internal:5050/root/jarvis-backend

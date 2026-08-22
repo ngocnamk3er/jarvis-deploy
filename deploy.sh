@@ -24,7 +24,7 @@ kubectl wait --namespace ingress-nginx \
   --timeout=180s
 
 echo "==> 2/4  Namespace"
-kubectl apply -f "$ROOT/00-namespace.yaml"
+kubectl apply -f "$ROOT/shared/base/00-namespace.yaml"
 
 echo "==> 3/4  Secrets (reusing local .env files from each app repo, if present as siblings)"
 set -a

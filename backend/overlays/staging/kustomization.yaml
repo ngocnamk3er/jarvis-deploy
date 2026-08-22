@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+
+# Same tag as overlays/test until an explicit promote step
+# (`kustomize edit set image` run from this directory) copies over
+# whatever test is currently running — never a git merge from main,
+# so it can never conflict with the patch below.
+images:
+- name: jarvis-backend
+  newName: host.minikube.internal:5050/root/jarvis-backend
+  newTag: f2b8296b
+
+# Only the 2 keys that must differ for staging's external hostname.
+# Lives in its own file/path, never touched by the base or by test's
+# overlay, so there's nothing for a future change on either of those
+# to collide with.
+patches:
+- path: configmap-patch.yaml

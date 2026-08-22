@@ -1,0 +1,6 @@
+- op: replace
+  path: /spec/template/spec/hostAliases
+  value:
+    - ip: "10.98.80.24"
+      hostnames:
+        - "auth.staging.jarvis.local"
