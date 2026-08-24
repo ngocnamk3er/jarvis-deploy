@@ -11,6 +11,11 @@ data:
   OPENROUTER_MODEL: "deepseek/deepseek-r1-0528-qwen3-8b:free"
   OPENROUTER_FALLBACK_MODELS: "deepseek/deepseek-v4-flash,deepseek/deepseek-v4-pro"
   FRONTEND_URL: "http://jarvis.local"
+  # jarvis-conversation-service — owns conversations/subagent_traces since
+  # the Chapter 2 decomposition. In-cluster Service DNS, same reasoning as
+  # OIDC_JWKS_URL below: this is a plain internal call, not an
+  # issuer/identity-matching concern, so no ingress hostname needed.
+  CONVERSATION_SERVICE_URL: "http://conversation-service.jarvis.svc.cluster.local:8000"
   OIDC_ISSUER: "http://auth.jarvis.local/realms/jarvis"
   OIDC_AUDIENCE: "jarvis-frontend"
   # In-cluster Service DNS — JWKS fetching is just a key lookup, it doesn't

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: conversation-service-config
+  namespace: jarvis
+data:
+  APP_NAME: "Jarvis Conversation Service"
+  APP_VERSION: "0.1.0"
+  API_PREFIX: "/api/v1"

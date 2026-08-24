@@ -16,16 +16,6 @@ spec:
       labels:
         app: backend
     spec:
-      initContainers:
-        - name: migrate
-          image: jarvis-backend:local
-          imagePullPolicy: IfNotPresent
-          command: ["alembic", "upgrade", "head"]
-          envFrom:
-            - configMapRef:
-                name: backend-config
-            - secretRef:
-                name: jarvis-secrets
       containers:
         - name: backend
           image: jarvis-backend:local

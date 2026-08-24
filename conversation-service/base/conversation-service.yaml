@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conversation-service
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: conversation-service
+  template:
+    metadata:
+      labels:
+        app: conversation-service
+    spec:
+      initContainers:
+        # The shared Postgres instance only creates its single POSTGRES_DB
+        # (jarvis) at first boot. This service needs its own database
+        # (Database per service, Ch.2 of Microservices Patterns) — create it
+        # here, idempotently, before alembic tries to connect to it. Uses
+        # postgres:16-alpine purely for its bundled psql client, not as a
+        # database itself.
+        - name: ensure-database
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              if [ "$(psql "$ADMIN_DATABASE_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='jarvis_conversations'")" != "1" ]; then
+                psql "$ADMIN_DATABASE_URL" -c "CREATE DATABASE jarvis_conversations"
+              fi
+          envFrom:
+            - secretRef:
+                name: jarvis-secrets
+        - name: migrate
+          image: jarvis-conversation-service:local
+          imagePullPolicy: IfNotPresent
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: conversation-service-config
+            - secretRef:
+                name: jarvis-secrets
+          env:
+            # jarvis-secrets' own DATABASE_URL key belongs to jarvis-backend
+            # (points at the shared `jarvis` database, for LangGraph's
+            # checkpoint tables) — override it here so this service connects
+            # to its own database instead. env: takes precedence over
+            # envFrom: for the same name, so this wins over the envFrom
+            # above.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: CONVERSATION_DATABASE_URL
+      containers:
+        - name: conversation-service
+          image: jarvis-conversation-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: conversation-service-config
+            - secretRef:
+                name: jarvis-secrets
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: CONVERSATION_DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: conversation-service
+  namespace: jarvis
+spec:
+  selector:
+    app: conversation-service
+  ports:
+    - port: 8000
+      targetPort: 8000

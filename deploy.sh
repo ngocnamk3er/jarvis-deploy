@@ -38,6 +38,9 @@ kubectl create secret generic jarvis-secrets -n "$NS" \
   --from-literal=OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}" \
   --from-literal=TAVILY_API_KEY="${TAVILY_API_KEY:-}" \
   --from-literal=DATABASE_URL="postgresql://jarvis:jarvis@postgres.jarvis.svc.cluster.local:5432/jarvis" \
+  --from-literal=ADMIN_DATABASE_URL="postgresql://jarvis:jarvis@postgres.jarvis.svc.cluster.local:5432/postgres" \
+  --from-literal=CONVERSATION_DATABASE_URL="postgresql://jarvis:jarvis@postgres.jarvis.svc.cluster.local:5432/jarvis_conversations" \
+  --from-literal=INTERNAL_API_KEY="${INTERNAL_API_KEY:-changeme-dev-only}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic jarvis-frontend-secrets -n "$NS" \
@@ -63,13 +66,16 @@ kubectl create secret docker-registry gitlab-registry-creds -n "$NS" \
 kubectl patch serviceaccount default -n "$NS" \
   -p '{"imagePullSecrets": [{"name": "gitlab-registry-creds"}]}'
 
-echo "==> 4/4  Registering this repo's 4 Applications with ArgoCD"
-# One Application per service (backend/frontend/keycloak) plus one for
-# shared resources (namespace/configmap/postgres/ingress) — each syncs
-# independently, so a bump commit from one app's Jenkinsfile only touches
-# that app's own Application, not the others.
+echo "==> 4/4  Registering this repo's Applications with ArgoCD"
+# One Application per service (backend/frontend/keycloak/conversation-service)
+# plus one for shared resources (namespace/configmap/postgres/ingress) — each
+# syncs independently, so a bump commit from one app's Jenkinsfile only
+# touches that app's own Application, not the others. This also applies the
+# staging-* Applications in this directory, but (like before) this script
+# only waits on the test-cluster ones below — the staging cluster may not
+# even be up yet during a fresh bootstrap.
 kubectl apply -f "$ROOT/argocd/"
-for app in jarvis-shared jarvis-backend jarvis-frontend jarvis-keycloak; do
+for app in jarvis-shared jarvis-backend jarvis-frontend jarvis-keycloak jarvis-conversation-service; do
   kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced "application/${app}" --timeout=120s
 done
 
