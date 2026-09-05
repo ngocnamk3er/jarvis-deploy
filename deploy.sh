@@ -40,7 +40,11 @@ kubectl create secret generic jarvis-secrets -n "$NS" \
   --from-literal=DATABASE_URL="postgresql://jarvis:jarvis@postgres.jarvis.svc.cluster.local:5432/jarvis" \
   --from-literal=ADMIN_DATABASE_URL="postgresql://jarvis:jarvis@postgres.jarvis.svc.cluster.local:5432/postgres" \
   --from-literal=CONVERSATION_DATABASE_URL="postgresql://jarvis:jarvis@postgres.jarvis.svc.cluster.local:5432/jarvis_conversations" \
+  --from-literal=FILE_DATABASE_URL="postgresql://jarvis:jarvis@postgres.jarvis.svc.cluster.local:5432/jarvis_files" \
   --from-literal=INTERNAL_API_KEY="${INTERNAL_API_KEY:-changeme-dev-only}" \
+  --from-literal=MINIO_ROOT_USER="${MINIO_ROOT_USER:-jarvis}" \
+  --from-literal=MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD:-jarvis-minio-dev-only}" \
+  --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic jarvis-frontend-secrets -n "$NS" \
@@ -75,7 +79,7 @@ echo "==> 4/4  Registering this repo's Applications with ArgoCD"
 # only waits on the test-cluster ones below — the staging cluster may not
 # even be up yet during a fresh bootstrap.
 kubectl apply -f "$ROOT/argocd/"
-for app in jarvis-shared jarvis-backend jarvis-frontend jarvis-keycloak jarvis-conversation-service; do
+for app in jarvis-shared jarvis-backend jarvis-frontend jarvis-keycloak jarvis-conversation-service jarvis-file-service; do
   kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced "application/${app}" --timeout=120s
 done
 

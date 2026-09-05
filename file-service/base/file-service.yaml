@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: file-service
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: file-service
+  template:
+    metadata:
+      labels:
+        app: file-service
+    spec:
+      initContainers:
+        # Same "Database per service" pattern as conversation-service.yaml —
+        # this service needs its own database (jarvis_files) on the shared
+        # Postgres instance, created idempotently before alembic connects.
+        - name: ensure-database
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              if [ "$(psql "$ADMIN_DATABASE_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='jarvis_files'")" != "1" ]; then
+                psql "$ADMIN_DATABASE_URL" -c "CREATE DATABASE jarvis_files"
+              fi
+          envFrom:
+            - secretRef:
+                name: jarvis-secrets
+        - name: migrate
+          image: jarvis-file-service:local
+          imagePullPolicy: IfNotPresent
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: file-service-config
+            - secretRef:
+                name: jarvis-secrets
+          env:
+            # jarvis-secrets' own DATABASE_URL key belongs to jarvis-backend
+            # (the shared `jarvis` database) — override here, same as
+            # conversation-service.yaml does for CONVERSATION_DATABASE_URL.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: FILE_DATABASE_URL
+      containers:
+        - name: file-service
+          image: jarvis-file-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: file-service-config
+            - secretRef:
+                name: jarvis-secrets
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: FILE_DATABASE_URL
+            # MinIO's server-side env var names (MINIO_ROOT_USER/PASSWORD,
+            # see shared/base/minio.yaml) differ from the client SDK's
+            # (MINIO_ACCESS_KEY/SECRET_KEY, see app/core/config.py) — same
+            # credential, remapped here rather than duplicating the secret.
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: OPENAI_API_KEY
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-service
+  namespace: jarvis
+spec:
+  selector:
+    app: file-service
+  ports:
+    - port: 8000
+      targetPort: 8000

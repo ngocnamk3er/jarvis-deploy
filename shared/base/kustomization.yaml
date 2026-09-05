@@ -16,4 +16,6 @@ resources:
 - 00-namespace.yaml
 - postgres.yaml
 - keycloak-postgres.yaml
+- minio.yaml
+- qdrant.yaml
 - ingress.yaml

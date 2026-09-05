@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- file-service.yaml
+- configmap.yaml
+
+# No images: transformer here on purpose — same reasoning as backend/base
+# and conversation-service/base: the image tag differs per environment, set
+# in each overlay instead.
