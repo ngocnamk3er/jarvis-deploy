@@ -4,9 +4,16 @@ kind: Kustomization
 resources:
 - ../../base
 
-# No images: entry yet — this service has never been built. jarvis-
-# file-service's own Jenkinsfile adds it here on its first run (`kustomize
-# edit set image` from this directory), same as conversation-service's.
-# Until then, ArgoCD deploys the base's literal `jarvis-file-service:local`
-# tag, which will sit in ImagePullBackOff — expected for a brand-new service
-# before its first pipeline run.
+# No Jenkins job exists for jarvis-file-service yet (unlike every other
+# service here) — images are built locally and `minikube image load`ed,
+# tagged by commit short-SHA (same tag scheme Jenkins uses for the others)
+# rather than reusing `:local`. Reusing a tag name doesn't force a reload
+# on nodes that already have that tag cached — verified live: `minikube
+# image load` silently no-oped and the pod kept running the original build
+# even after a fresh `docker build` produced a new image ID. A distinct tag
+# per build sidesteps that entirely, and doubles as the real fix once a
+# Jenkins job exists: the "Bump manifest" stage just needs to overwrite the
+# same `images:` block below with `kustomize edit set image`.
+images:
+- name: jarvis-file-service
+  newTag: 79e4d1c0
