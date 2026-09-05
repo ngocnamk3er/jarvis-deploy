@@ -3,14 +3,7 @@ kind: Kustomization
 
 resources:
 - ../../base
-
-# Rewritten by jarvis-frontend's own Jenkinsfile "Bump manifest" stage
-# after each image push (includes a lint/build stage before this — see
-# the Jenkinsfile — since it's the only app with a build step of its own).
-#
-# Temporarily reverted to base's plain `:local` tag (no images: transform)
-# for a one-off manual bootstrap alongside the jarvis-file-service
-# integration — built locally and `minikube image load`ed rather than
-# pushed through the registry (no registry-scoped credential available at
-# the time). The next real Jenkins run overwrites this with a proper SHA
-# tag again, same as it always does.
+images:
+- name: jarvis-frontend
+  newName: host.minikube.internal:5050/root/jarvis-frontend
+  newTag: e137e56f
