@@ -80,11 +80,11 @@ spec:
                 secretKeyRef:
                   name: jarvis-secrets
                   key: MINIO_ROOT_PASSWORD
-            - name: OPENAI_API_KEY
+            - name: EMBEDDING_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: jarvis-secrets
-                  key: OPENAI_API_KEY
+                  key: EMBEDDING_API_KEY
           readinessProbe:
             httpGet:
               path: /

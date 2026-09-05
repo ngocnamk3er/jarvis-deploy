@@ -44,7 +44,7 @@ kubectl create secret generic jarvis-secrets -n "$NS" \
   --from-literal=INTERNAL_API_KEY="${INTERNAL_API_KEY:-changeme-dev-only}" \
   --from-literal=MINIO_ROOT_USER="${MINIO_ROOT_USER:-jarvis}" \
   --from-literal=MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD:-jarvis-minio-dev-only}" \
-  --from-literal=OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
+  --from-literal=EMBEDDING_API_KEY="${EMBEDDING_API_KEY:-}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic jarvis-frontend-secrets -n "$NS" \
