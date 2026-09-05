@@ -3,15 +3,7 @@ kind: Kustomization
 
 resources:
 - ../../base
-
-# Rewritten by jarvis-backend's own Jenkinsfile "Bump manifest" stage
-# after each image push (`kustomize edit set image ...` run from this
-# directory), so ArgoCD deploys the exact commit-SHA-tagged image that
-# pipeline just built — not a floating tag.
-#
-# Temporarily reverted to base's plain `:local` tag (no images: transform)
-# for a one-off manual bootstrap of the jarvis-file-service integration —
-# built locally and `minikube image load`ed rather than pushed through the
-# registry (no registry-scoped credential available at the time). The next
-# real Jenkins run overwrites this with a proper SHA tag again, same as it
-# always does.
+images:
+- name: jarvis-backend
+  newName: host.minikube.internal:5050/root/jarvis-backend
+  newTag: caede559
