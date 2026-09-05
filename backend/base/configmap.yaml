@@ -16,6 +16,10 @@ data:
   # OIDC_JWKS_URL below: this is a plain internal call, not an
   # issuer/identity-matching concern, so no ingress hostname needed.
   CONVERSATION_SERVICE_URL: "http://conversation-service.jarvis.svc.cluster.local:8000"
+  # jarvis-file-service — owns the per-user file workspace (tree metadata +
+  # MinIO + Qdrant). Same in-cluster Service DNS reasoning as
+  # CONVERSATION_SERVICE_URL above.
+  FILE_SERVICE_URL: "http://file-service.jarvis.svc.cluster.local:8000"
   OIDC_ISSUER: "http://auth.jarvis.local/realms/jarvis"
   OIDC_AUDIENCE: "jarvis-frontend"
   # In-cluster Service DNS — JWKS fetching is just a key lookup, it doesn't
