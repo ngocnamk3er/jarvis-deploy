@@ -16,4 +16,4 @@ resources:
 # same `images:` block below with `kustomize edit set image`.
 images:
 - name: jarvis-file-service
-  newTag: 79e4d1c0
+  newTag: 69b03c9d
