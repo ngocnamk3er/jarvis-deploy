@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+
+# No Jenkins job for jarvis-sandbox yet (same as jarvis-file-service) —
+# built locally and `minikube image load`ed under a commit-SHA tag, bumped
+# here by hand. `minikube image load` silently no-ops if the tag already
+# exists on the node, so always load under a NEW tag. Once a Jenkins job
+# exists, its "Bump manifest" stage overwrites this images: block.
+images:
+- name: jarvis-sandbox
+  newTag: 6264e35

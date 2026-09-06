@@ -28,10 +28,7 @@ data:
   OIDC_JWKS_URL: "http://keycloak.jarvis.svc.cluster.local:8080/realms/jarvis/protocol/openid-connect/certs"
   OIDC_JWKS_CACHE_TTL_SECONDS: "3600"
   LLM_CACHE: "false"
-  # bash tool's sandbox backend — same-cluster pod-to-pod call (opensandbox
-  # deployed via helm into opensandbox-system, see k8s/opensandbox-ingress.yaml
-  # for the separate external-hostname route used by the local bare-process
-  # backend). No issuer/identity-matching concern here (unlike OIDC_ISSUER
-  # above), so plain in-cluster Service DNS is correct and simpler than
-  # going out through the ingress hostname.
-  SANDBOX_SERVER_DOMAIN: "opensandbox-server.opensandbox-system.svc.cluster.local:80"
+  # jarvis-sandbox — one shared container running the bash tool's commands
+  # + present_file. Replaced OpenSandbox (its bwrap/userns isolation broke on
+  # this host once the kernel set apparmor_restrict_unprivileged_userns=1).
+  SANDBOX_SERVICE_URL: "http://sandbox.jarvis.svc.cluster.local:8000"

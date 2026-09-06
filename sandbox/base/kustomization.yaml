@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- sandbox.yaml
+- configmap.yaml
+
+# No images: transformer here — the tag differs per environment, set in
+# each overlay (same as backend/base, file-service/base).

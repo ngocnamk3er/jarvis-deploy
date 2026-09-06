@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sandbox-config
+  namespace: jarvis
+data:
+  APP_NAME: "Jarvis Sandbox"
+  APP_VERSION: "0.1.0"
+  API_PREFIX: "/api/v1"
+  WORKSPACE_ROOT: "/workspace"
+  COMMAND_TIMEOUT_SECONDS: "300"
+  IDLE_GC_MINUTES: "60"

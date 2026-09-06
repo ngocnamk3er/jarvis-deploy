@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+
+# Internal-only service, no ingress hostname to patch — same as
+# conversation-service/file-service staging overlays. Image tag is bumped
+# only via an explicit promote step. See STAGING-CICD-NOTES.md.

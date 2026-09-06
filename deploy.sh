@@ -79,7 +79,7 @@ echo "==> 4/4  Registering this repo's Applications with ArgoCD"
 # only waits on the test-cluster ones below — the staging cluster may not
 # even be up yet during a fresh bootstrap.
 kubectl apply -f "$ROOT/argocd/"
-for app in jarvis-shared jarvis-backend jarvis-frontend jarvis-keycloak jarvis-conversation-service jarvis-file-service; do
+for app in jarvis-shared jarvis-backend jarvis-frontend jarvis-keycloak jarvis-conversation-service jarvis-file-service jarvis-sandbox; do
   kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced "application/${app}" --timeout=120s
 done
 
