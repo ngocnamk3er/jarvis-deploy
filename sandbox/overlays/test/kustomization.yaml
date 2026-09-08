@@ -14,4 +14,4 @@ resources:
 # scientific notation and kustomize rejects it as a number.
 images:
 - name: jarvis-sandbox
-  newTag: "a84b7a72"
+  newTag: "afb1cd0b"

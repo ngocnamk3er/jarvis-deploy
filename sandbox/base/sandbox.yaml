@@ -32,7 +32,11 @@ spec:
           securityContext:
             capabilities:
               drop: ["ALL"]
-              add: ["SYS_ADMIN", "SETUID", "SETGID", "CHOWN", "DAC_OVERRIDE", "KILL"]
+              # SYS_ADMIN: mount --bind / tmpfs for the per-exec jail.
+              # SETUID/SETGID: setpriv drops each command to a per-thread uid.
+              # CHOWN/FOWNER/DAC_OVERRIDE: chown+chmod+traverse thread dirs.
+              # KILL: SIGKILL a timed-out process tree.
+              add: ["SYS_ADMIN", "SETUID", "SETGID", "CHOWN", "FOWNER", "DAC_OVERRIDE", "KILL"]
           ports:
             - containerPort: 8000
           envFrom:
