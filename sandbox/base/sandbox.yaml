@@ -18,13 +18,21 @@ spec:
       labels:
         app: sandbox
     spec:
+      # The service runs as root so it can set up a private mount namespace
+      # per exec (CAP_SYS_ADMIN for `mount --bind`) and drop each command to
+      # a per-thread uid (setpriv). Every user command is unprivileged and
+      # jailed to its own conversation's workspace.
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 10001
+        runAsNonRoot: false
+        runAsUser: 0
       containers:
         - name: sandbox
           image: jarvis-sandbox:local
           imagePullPolicy: IfNotPresent
+          securityContext:
+            capabilities:
+              drop: ["ALL"]
+              add: ["SYS_ADMIN", "SETUID", "SETGID", "CHOWN", "DAC_OVERRIDE", "KILL"]
           ports:
             - containerPort: 8000
           envFrom:
@@ -34,7 +42,7 @@ spec:
                 name: jarvis-secrets
           volumeMounts:
             - name: workspace
-              mountPath: /workspace
+              mountPath: /data
           resources:
             requests:
               cpu: "500m"
