@@ -14,4 +14,5 @@ resources:
 # scientific notation and kustomize rejects it as a number.
 images:
 - name: jarvis-sandbox
-  newTag: "7b235242"
+  newName: host.minikube.internal:5050/root/jarvis-sandbox
+  newTag: 93a26bec
