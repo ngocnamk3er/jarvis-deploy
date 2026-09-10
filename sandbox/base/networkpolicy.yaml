@@ -1,7 +1,14 @@
-# Locks down the per-conversation agent pods. This is the isolation win the
-# old shared-container service could not have: a bash command can still reach
-# the public internet (pip / curl, which the product needs) but NOT any other
-# pod or Service in the cluster, nor the node metadata endpoint.
+# Locks down the per-conversation agent pods: default-deny both directions,
+# with two narrow holes.
+#
+#   ingress — only the orchestrator, on the agent's HTTP port
+#   egress  — only DNS
+#
+# No internet, no other pod or Service, no node metadata endpoint. The agent's
+# whole toolchain is baked into the image (pip/uv are stripped, the rootfs is
+# read-only), so it has nothing to fetch — this keeps it that way and removes
+# any egress-driven cost or exfiltration path. DNS stays open only so a stray
+# `curl <url>` fails fast instead of hanging on name resolution.
 #
 # REQUIRES a NetworkPolicy-enforcing CNI. minikube's default bridge/kindnet
 # does NOT enforce these — start the cluster with `--cni=calico` (or enable the
@@ -19,7 +26,6 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Only the orchestrator may reach the agent's HTTP port.
     - from:
         - podSelector:
             matchLabels:
@@ -28,7 +34,6 @@ spec:
         - protocol: TCP
           port: 8000
   egress:
-    # DNS (kube-dns / CoreDNS in kube-system).
     - to:
         - namespaceSelector: {}
           podSelector:
@@ -39,14 +44,3 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Public internet only — every RFC1918 range and the 169.254 link-local
-    # metadata IP are excluded, which also covers the pod and Service CIDRs on
-    # a default minikube (10.x / 172.x).
-    - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-            except:
-              - 10.0.0.0/8
-              - 172.16.0.0/12
-              - 192.168.0.0/16
-              - 169.254.0.0/16
