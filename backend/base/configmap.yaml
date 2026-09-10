@@ -28,7 +28,9 @@ data:
   OIDC_JWKS_URL: "http://keycloak.jarvis.svc.cluster.local:8080/realms/jarvis/protocol/openid-connect/certs"
   OIDC_JWKS_CACHE_TTL_SECONDS: "3600"
   LLM_CACHE: "false"
-  # jarvis-sandbox — one shared container running the bash tool's commands
-  # + present_file. Replaced OpenSandbox (its bwrap/userns isolation broke on
-  # this host once the kernel set apparmor_restrict_unprivileged_userns=1).
+  # jarvis-sandbox — the orchestrator Service. Backs the bash tool + present_file.
+  # Each conversation gets its own dedicated agent pod from a warm pool
+  # (isolation = the k8s pod boundary). Replaced OpenSandbox (its bwrap/userns
+  # isolation broke on this host once the kernel set
+  # apparmor_restrict_unprivileged_userns=1).
   SANDBOX_SERVICE_URL: "http://sandbox.jarvis.svc.cluster.local:8000"

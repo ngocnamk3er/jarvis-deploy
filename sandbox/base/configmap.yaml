@@ -4,9 +4,32 @@ metadata:
   name: sandbox-config
   namespace: jarvis
 data:
+  # This ConfigMap is consumed by the ORCHESTRATOR pod. Agent pods get their
+  # env from the pod spec the orchestrator writes (app/orchestrator/podspec.py),
+  # derived from these same values — single source of truth.
+  SANDBOX_ROLE: "orchestrator"
   APP_NAME: "Jarvis Sandbox"
-  APP_VERSION: "0.1.0"
+  APP_VERSION: "0.2.0"
   API_PREFIX: "/api/v1"
-  DATA_ROOT: "/data"
+
+  # SANDBOX_IMAGE is intentionally NOT set: the orchestrator reads its own
+  # running image off the k8s API and runs agent pods with the same tag, so CI
+  # only ever bumps the Deployment image (below) and the two cannot drift.
+
+  POOL_SIZE: "1"          # warm agent pods kept Ready (keep small on minikube)
+  MAX_SANDBOXES: "6"      # hard ceiling on total agent pods
+  IDLE_GC_MINUTES: "60"   # delete a sandbox no bash call touched for this long
+  CLAIM_TIMEOUT_SECONDS: "40"
   COMMAND_TIMEOUT_SECONDS: "300"
-  IDLE_GC_MINUTES: "60"
+
+  # Per-agent-pod sizing — the hypervisor-less stand-in for E2B's vCPU/RAM.
+  SANDBOX_CPU_REQUEST: "100m"
+  SANDBOX_CPU_LIMIT: "2"
+  SANDBOX_MEM_REQUEST: "256Mi"
+  SANDBOX_MEM_LIMIT: "2Gi"
+  SANDBOX_WORKSPACE_SIZE: "2Gi"
+  SANDBOX_TMP_SIZE: "1Gi"
+
+  # Set to "gvisor" once a RuntimeClass of that name exists on the cluster
+  # (kernel-level isolation, E2B-style). Empty = the node's default runtime.
+  SANDBOX_RUNTIME_CLASS: ""

@@ -2,8 +2,11 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-- sandbox.yaml
+- orchestrator.yaml
 - configmap.yaml
+- networkpolicy.yaml
 
-# No images: transformer here — the tag differs per environment, set in
-# each overlay (same as backend/base, file-service/base).
+# No images: transformer here — the tag differs per environment, set in each
+# overlay (same as backend/base, file-service/base). Kustomize rewrites the
+# orchestrator Deployment's `image:`; agent pods inherit that tag at runtime
+# (the orchestrator reads its own image off the k8s API).

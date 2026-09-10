@@ -1,0 +1,52 @@
+# Locks down the per-conversation agent pods. This is the isolation win the
+# old shared-container service could not have: a bash command can still reach
+# the public internet (pip / curl, which the product needs) but NOT any other
+# pod or Service in the cluster, nor the node metadata endpoint.
+#
+# REQUIRES a NetworkPolicy-enforcing CNI. minikube's default bridge/kindnet
+# does NOT enforce these — start the cluster with `--cni=calico` (or enable the
+# calico addon). Without enforcement the policy is inert but harmless.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-agent
+  namespace: jarvis
+spec:
+  podSelector:
+    matchLabels:
+      app: jarvis-sandbox-agent
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only the orchestrator may reach the agent's HTTP port.
+    - from:
+        - podSelector:
+            matchLabels:
+              app: sandbox
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # DNS (kube-dns / CoreDNS in kube-system).
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Public internet only — every RFC1918 range and the 169.254 link-local
+    # metadata IP are excluded, which also covers the pod and Service CIDRs on
+    # a default minikube (10.x / 172.x).
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
