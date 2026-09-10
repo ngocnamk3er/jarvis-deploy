@@ -16,9 +16,10 @@ data:
   # running image off the k8s API and runs agent pods with the same tag, so CI
   # only ever bumps the Deployment image (below) and the two cannot drift.
 
-  POOL_SIZE: "1"          # warm agent pods kept Ready (keep small on minikube)
-  MAX_SANDBOXES: "6"      # hard ceiling on total agent pods
-  IDLE_GC_MINUTES: "60"   # delete a sandbox no bash call touched for this long
+  POOL_SIZE: "0"           # 0 = pure on-demand, no idle pods kept warm
+  MAX_SANDBOXES: "6"       # hard ceiling on total agent pods (past it -> 503)
+  IDLE_GC_MINUTES: "30"    # delete a sandbox no bash call touched for this long
+  SANDBOX_TTL_MINUTES: "180"  # hard per-pod lifetime, even if still active
   CLAIM_TIMEOUT_SECONDS: "40"
   COMMAND_TIMEOUT_SECONDS: "300"
 
