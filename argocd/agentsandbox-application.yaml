@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jarvis-agentsandbox
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://host.minikube.internal:8929/root/jarvis-deploy.git
+    targetRevision: main
+    path: agentsandbox/overlays/test
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

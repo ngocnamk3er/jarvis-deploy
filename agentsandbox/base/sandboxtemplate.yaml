@@ -1,0 +1,55 @@
+# kubernetes-sigs/agent-sandbox backend for jarvis — evaluated as a future
+# replacement for sandbox/ (the current orchestrator). See jarvis-sandbox's
+# AGENTSANDBOX-MIGRATION.md for the full plan/status. Lives in `default`,
+# not `jarvis` — deliberately isolated from production until cutover.
+#
+# Prereq: the agent-sandbox controller + CRDs + sandbox-router must already
+# be installed (namespace agent-sandbox-system) — not managed by this
+# Application, see AGENTSANDBOX-MIGRATION.md Phase 1 "Install".
+apiVersion: extensions.agents.x-k8s.io/v1beta1
+kind: SandboxTemplate
+metadata:
+  name: jarvis-agentsandbox-template
+  namespace: default
+spec:
+  podTemplate:
+    metadata:
+      labels:
+        app: jarvis-agentsandbox-agent
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: simple-sandbox
+          image: jarvis-sandbox-agentsandbox:local # replaced by the overlay
+          ports:
+            - containerPort: 8888
+          readinessProbe:
+            httpGet: {path: "/", port: 8888}
+            initialDelaySeconds: 0
+            periodSeconds: 1
+          livenessProbe:
+            httpGet: {path: "/", port: 8888}
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          resources:
+            requests: {cpu: "100m", memory: "256Mi", ephemeral-storage: "512Mi"}
+            limits: {cpu: "2", memory: "2Gi"}
+          volumeMounts:
+            - {name: workspace, mountPath: /workspace}
+            - {name: tmp, mountPath: /tmp}
+            - {name: vartmp, mountPath: /var/tmp}
+      restartPolicy: "OnFailure"
+      volumes:
+        - {name: workspace, emptyDir: {sizeLimit: 2Gi}}
+        - {name: tmp, emptyDir: {sizeLimit: 1Gi}}
+        - {name: vartmp, emptyDir: {sizeLimit: 256Mi}}

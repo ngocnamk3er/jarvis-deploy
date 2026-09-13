@@ -1,0 +1,15 @@
+apiVersion: extensions.agents.x-k8s.io/v1beta1
+kind: SandboxWarmPool
+metadata:
+  name: jarvis-agentsandbox-pool
+  namespace: default
+spec:
+  # Benchmarked 2026-09-13: ~29ms warm claim vs. ~1.5s cold on-demand
+  # (pool scaled to 0) vs. ~3.1s for the current orchestrator's on-demand
+  # pod creation (POOL_SIZE=0, no warm pool at all) — see
+  # AGENTSANDBOX-MIGRATION.md step D. 1 replica costs one idle pod's
+  # requests (100m CPU / 256Mi mem) at all times; raise if claim latency
+  # matters more than that idle cost.
+  replicas: 1
+  sandboxTemplateRef:
+    name: jarvis-agentsandbox-template
