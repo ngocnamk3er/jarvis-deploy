@@ -28,3 +28,11 @@ data:
   OIDC_JWKS_URL: "http://keycloak.jarvis.svc.cluster.local:8080/realms/jarvis/protocol/openid-connect/certs"
   OIDC_JWKS_CACHE_TTL_SECONDS: "3600"
   LLM_CACHE: "false"
+  # TEMPORARY 2026-09-15: pointed at agent-sandbox's own stock quickstart
+  # pool instead of jarvis's hardened one, to compare behavior live. This
+  # pool's pods are missing jarvis's toolchain (no python-docx/pptx/pandoc,
+  # Python 3.14 not 3.11) and — unlike jarvis-agentsandbox-pool's template —
+  # its auto-managed NetworkPolicy allows egress to the whole internet and
+  # the image still has pip. Revert by deleting this line (falls back to
+  # the code default, AGENTSANDBOX_WARMPOOL="jarvis-agentsandbox-pool").
+  AGENTSANDBOX_WARMPOOL: "python-sandbox-pool"
