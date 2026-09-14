@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+
+# No Jenkins job builds this (it's kubernetes-sigs/agent-sandbox's own
+# source, not something jarvis-sandbox's own Jenkinsfile touches) — bump
+# this tag by hand after building+pushing, same as agentsandbox/overlays/test
+# before it had CI. Quote the tag if it's ever a bare hex string.
+images:
+- name: sandbox-router-go
+  newName: host.minikube.internal:5050/root/jarvis-sandbox
+  newTag: "sandbox-router-v1.0.2"

@@ -1,0 +1,93 @@
+# Replaces the ad-hoc Phase-1 install (kubectl apply straight from
+# kubernetes-sigs/agent-sandbox's own sandbox_router.yaml, --authz-mode
+# left at the allow-all default) with a properly GitOps-tracked Deployment
+# running a self-built image from the Go router source (tag v1.0.2, same
+# as the installed controller) with --authz-mode=tokenreview and the
+# pod-IP cache enabled.
+#
+# Why this exists at all, not just "use the upstream image": the deployed
+# staging image (us-central1-docker.pkg.dev/.../sandbox-router:latest-main)
+# turned out to be an old Python build with none of this — no pod-IP
+# cache (502s on every claimed sandbox) and no authz framework at all.
+# See jarvis-sandbox/AGENTSANDBOX-MIGRATION.md for the full incident:
+# with the router bypassed (SandboxInClusterConnectionConfig, direct pod
+# IP), any sandbox pod could reach and fully compromise (read files, run
+# commands) any *other* live sandbox pod on this cluster — confirmed live,
+# not theoretical. Routing through this Deployment with tokenreview on is
+# the fix.
+#
+# Keeps the same name/labels as the original ad-hoc Deployment so the
+# existing sandbox-router-svc Service (unchanged, not managed here) keeps
+# routing to it without any Service-side change.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sandbox-router-deployment
+  namespace: agent-sandbox-system
+  labels:
+    app: sandbox-router
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sandbox-router
+  template:
+    metadata:
+      labels:
+        app: sandbox-router
+    spec:
+      # Created by hand (see AGENTSANDBOX-MIGRATION.md Phase 2 step G /
+      # jarvis-deploy's own note) — RBAC for a router in tokenreview mode
+      # is a permission grant, deliberately not GitOps'd, same reasoning
+      # as jarvis-backend's own agent-sandbox RBAC.
+      serviceAccountName: sandbox-router
+      securityContext:
+        runAsNonRoot: true
+        readOnlyRootFilesystem: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: sandbox-router
+        image: sandbox-router-go:local # replaced by the overlay
+        imagePullPolicy: IfNotPresent
+        args:
+        - --http-bind-address=:8080
+        - --metrics-bind-address=:9090
+        - --health-probe-bind-address=:8081
+        - --cluster-domain=cluster.local
+        - --proxy-timeout=180s
+        - --upstream-max-retries=3
+        # The pod-IP cache — this is what actually fixes the 502s the old
+        # staging image had. Requires the Pod-read ClusterRole in rbac.yaml.
+        - --cache-enabled=true
+        # jarvis-backend authenticates with its own ServiceAccount's
+        # projected token (see sandbox_manager.py's _auth_headers()) —
+        # the router validates it via the K8s TokenReview API. Requires
+        # the system:auth-delegator binding in rbac-tokenreview.yaml.
+        - --authz-mode=tokenreview
+        - --authz-tokenreview-require-token=true
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities: {drop: ["ALL"]}
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: metrics
+          containerPort: 9090
+        - name: healthz
+          containerPort: 8081
+        livenessProbe:
+          httpGet: {path: /healthz, port: healthz}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet: {path: /readyz, port: healthz}
+          initialDelaySeconds: 1
+          periodSeconds: 5
+          failureThreshold: 2
+        resources:
+          requests: {cpu: 100m, memory: 128Mi}
+          limits: {cpu: "1", memory: 512Mi}
+      terminationGracePeriodSeconds: 45
