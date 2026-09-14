@@ -43,7 +43,6 @@ spec:
       serviceAccountName: sandbox-router
       securityContext:
         runAsNonRoot: true
-        readOnlyRootFilesystem: true
         seccompProfile: {type: RuntimeDefault}
       containers:
       - name: sandbox-router
