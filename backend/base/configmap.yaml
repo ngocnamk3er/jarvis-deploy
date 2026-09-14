@@ -28,3 +28,7 @@ data:
   OIDC_JWKS_URL: "http://keycloak.jarvis.svc.cluster.local:8080/realms/jarvis/protocol/openid-connect/certs"
   OIDC_JWKS_CACHE_TTL_SECONDS: "3600"
   LLM_CACHE: "false"
+  # Deliberately kept on agent-sandbox's stock pool, not jarvis's own — see
+  # sandbox_manager.py's exec_bash() docstring (jarvis-backend repo) for the
+  # bash -c wrapping fix that makes this actually work correctly now.
+  AGENTSANDBOX_WARMPOOL: "python-sandbox-pool"
