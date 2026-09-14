@@ -17,10 +17,9 @@ spec:
         app: backend
     spec:
       # Lets the pod talk to the agent-sandbox CRDs (sandboxclaims/sandboxes
-      # in the default namespace) when SANDBOX_BACKEND=agentsandbox — see
-      # sandbox_manager_agentsandbox.py and jarvis-deploy's
-      # argocd/agentsandbox-application.yaml (RBAC applied separately,
-      # deliberately not via automated GitOps — see that commit).
+      # in the default namespace) — see app/agents/tools/sandbox_manager.py
+      # and jarvis-deploy's argocd/agentsandbox-application.yaml (RBAC
+      # applied separately, deliberately not via automated GitOps).
       serviceAccountName: jarvis-backend
       containers:
         - name: backend
