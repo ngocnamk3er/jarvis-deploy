@@ -15,4 +15,4 @@ resources:
 images:
 - name: jarvis-sandbox
   newName: host.minikube.internal:5050/root/jarvis-sandbox
-  newTag: "33767e20"
+  newTag: 2b72114c
