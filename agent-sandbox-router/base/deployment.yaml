@@ -45,6 +45,13 @@ spec:
       labels:
         app: sandbox-router
     spec:
+      # Stated explicitly rather than omitted: this Deployment previously ran
+      # with a dedicated `sandbox-router` ServiceAccount, and dropping the
+      # field from the manifest does not remove it from the live object —
+      # kubectl apply leaves it in place. Naming `default` gives ArgoCD
+      # something to converge on. The published router calls no Kubernetes
+      # API, so it needs no identity of its own.
+      serviceAccountName: default
       containers:
       - name: router
         image: sandbox-router # replaced by the overlay
