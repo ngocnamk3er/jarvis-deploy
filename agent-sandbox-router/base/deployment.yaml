@@ -1,24 +1,33 @@
-# Replaces the ad-hoc Phase-1 install (kubectl apply straight from
-# kubernetes-sigs/agent-sandbox's own sandbox_router.yaml, --authz-mode
-# left at the allow-all default) with a properly GitOps-tracked Deployment
-# running a self-built image from the Go router source (tag v1.0.2, same
-# as the installed controller) with --authz-mode=tokenreview and the
-# pod-IP cache enabled.
+# The sandbox-router: proxies jarvis-backend's exec/file calls to the right
+# Sandbox pod. Runs kubernetes-sigs/agent-sandbox's own published router image
+# with the config from their sandbox_router.yaml quickstart, rather than a
+# self-built one.
 #
-# Why this exists at all, not just "use the upstream image": the deployed
-# staging image (us-central1-docker.pkg.dev/.../sandbox-router:latest-main)
-# turned out to be an old Python build with none of this — no pod-IP
-# cache (502s on every claimed sandbox) and no authz framework at all.
-# See jarvis-sandbox/AGENTSANDBOX-MIGRATION.md for the full incident:
-# with the router bypassed (SandboxInClusterConnectionConfig, direct pod
-# IP), any sandbox pod could reach and fully compromise (read files, run
-# commands) any *other* live sandbox pod on this cluster — confirmed live,
-# not theoretical. Routing through this Deployment with tokenreview on is
-# the fix.
+# History worth knowing, because this was briefly the opposite: an earlier
+# pass here ran a self-built Go router (v1.0.2 source) with
+# --authz-mode=tokenreview and --cache-enabled=true, on the belief that the
+# published image was an old Python build that 502'd for lack of a pod-IP
+# cache and had no authz at all. Both beliefs were tested on 2026-09-15 and
+# turned out wrong:
 #
-# Keeps the same name/labels as the original ad-hoc Deployment so the
-# existing sandbox-router-svc Service (unchanged, not managed here) keeps
-# routing to it without any Service-side change.
+#   - No 502s. The SDK resolves the pod IP itself from the Sandbox CR's
+#     .status.podIPs (jarvis-backend already has `sandboxes: get`) and sends
+#     it as X-Sandbox-Pod-IP, so the router just forwards — it never needs to
+#     resolve anything, which is also why upstream's YAML ships no RBAC.
+#   - The published image does have auth, via ALLOW_UNAUTHENTICATED_ROUTER +
+#     ROUTER_AUTH_TOKEN (a single shared token). Verified: with it enabled, an
+#     unauthenticated call gets a real 401.
+#
+# ALLOW_UNAUTHENTICATED_ROUTER is set to "true" here, matching the quickstart
+# rather than upstream's file default of "false". That is a deliberate
+# trade-off for this deployment's scope (only jarvis-backend calls the
+# router, on the FE -> BE -> sandbox path): per-conversation isolation does
+# NOT depend on this flag — each conversation gets its own pod either way,
+# verified live with two conversations where B could not see or read A's
+# files. What "true" gives up is rejecting callers that present no token, so
+# any workload able to reach this Service could address any sandbox. Flipping
+# to "false" needs a Secret plus a matching token on jarvis-backend's side;
+# see AGENTSANDBOX-MIGRATION.md.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -36,57 +45,44 @@ spec:
       labels:
         app: sandbox-router
     spec:
-      # Created by hand (see AGENTSANDBOX-MIGRATION.md Phase 2 step G /
-      # jarvis-deploy's own note) — RBAC for a router in tokenreview mode
-      # is a permission grant, deliberately not GitOps'd, same reasoning
-      # as jarvis-backend's own agent-sandbox RBAC.
-      serviceAccountName: sandbox-router
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile: {type: RuntimeDefault}
       containers:
-      - name: sandbox-router
-        image: sandbox-router-go:local # replaced by the overlay
-        imagePullPolicy: IfNotPresent
-        args:
-        - --http-bind-address=:8080
-        - --metrics-bind-address=:9090
-        - --health-probe-bind-address=:8081
-        - --cluster-domain=cluster.local
-        - --proxy-timeout=180s
-        - --upstream-max-retries=3
-        # The pod-IP cache — this is what actually fixes the 502s the old
-        # staging image had. Requires the Pod-read ClusterRole in rbac.yaml.
-        - --cache-enabled=true
-        # jarvis-backend authenticates with its own ServiceAccount's
-        # projected token (see sandbox_manager.py's _auth_headers()) —
-        # the router validates it via the K8s TokenReview API. Requires
-        # the system:auth-delegator binding in rbac-tokenreview.yaml.
-        - --authz-mode=tokenreview
-        - --authz-tokenreview-require-token=true
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          capabilities: {drop: ["ALL"]}
+      - name: router
+        image: sandbox-router # replaced by the overlay
+        env:
+        - name: PROXY_TIMEOUT_SECONDS
+          value: "180"
+        - name: WEBSOCKET_IDLE_TIMEOUT_SECONDS
+          value: "3600"
+        - name: WEBSOCKET_MAX_LIFETIME_SECONDS
+          value: "86400"
+        - name: WEBSOCKET_MAX_MESSAGE_BYTES
+          value: "16777216"
+        # Per-client caps stay disabled until TRUSTED_PROXY_CIDRS is set —
+        # nothing fronts this Service today, so every caller would otherwise
+        # share one proxy peer IP.
+        - name: WEBSOCKET_MAX_CONNECTIONS_PER_CLIENT
+          value: "0"
+        - name: ALLOW_UNAUTHENTICATED_ROUTER
+          value: "true"
         ports:
-        - name: http
-          containerPort: 8080
-        - name: metrics
-          containerPort: 9090
-        - name: healthz
-          containerPort: 8081
-        livenessProbe:
-          httpGet: {path: /healthz, port: healthz}
-          initialDelaySeconds: 5
-          periodSeconds: 10
-          failureThreshold: 3
+        - containerPort: 8080
         readinessProbe:
-          httpGet: {path: /readyz, port: healthz}
-          initialDelaySeconds: 1
+          httpGet: {path: /healthz, port: 8080}
+          initialDelaySeconds: 5
           periodSeconds: 5
-          failureThreshold: 2
+        livenessProbe:
+          httpGet: {path: /healthz, port: 8080}
+          initialDelaySeconds: 10
+          periodSeconds: 10
         resources:
-          requests: {cpu: 100m, memory: 128Mi}
-          limits: {cpu: "1", memory: 512Mi}
+          requests: {cpu: "250m", memory: "512Mi"}
+          limits: {cpu: "1000m", memory: "1Gi"}
+      # Upstream's own security context. Deliberately not the stricter set
+      # this file used to carry for the Go binary — in particular
+      # readOnlyRootFilesystem is left off, since this is a Python app that
+      # may want scratch space, and the hardened variant was never tested
+      # against this image.
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
       terminationGracePeriodSeconds: 45

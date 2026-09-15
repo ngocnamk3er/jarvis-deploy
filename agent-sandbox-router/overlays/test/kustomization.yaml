@@ -4,11 +4,10 @@ kind: Kustomization
 resources:
 - ../../base
 
-# No Jenkins job builds this (it's kubernetes-sigs/agent-sandbox's own
-# source, not something jarvis-sandbox's own Jenkinsfile touches) — bump
-# this tag by hand after building+pushing, same as agentsandbox/overlays/test
-# before it had CI. Quote the tag if it's ever a bare hex string.
+# Upstream's published router image — nothing local builds this, so there is
+# no tag to bump on a push and no Jenkins job to wire up. Pinned to the same
+# tag the quickstart uses.
 images:
-- name: sandbox-router-go
-  newName: host.minikube.internal:5050/root/jarvis-sandbox
-  newTag: "sandbox-router-v1.0.2"
+- name: sandbox-router
+  newName: us-central1-docker.pkg.dev/k8s-staging-images/agent-sandbox/sandbox-router
+  newTag: "latest-main"
