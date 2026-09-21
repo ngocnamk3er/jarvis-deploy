@@ -1,0 +1,141 @@
+# Langfuse web + worker.
+#
+# Both run the same configuration and differ only in image and role, so the
+# shared settings live in one ConfigMap. Postgres and MinIO are the cluster's
+# existing shared instances — a separate `langfuse` database and bucket, the
+# same way jarvis_files and jarvis_conversations already share one Postgres.
+# Only ClickHouse and Redis are new.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: langfuse-config
+  namespace: jarvis
+data:
+  CLICKHOUSE_URL: "http://langfuse-clickhouse:8123"
+  # Migrations connect over the native protocol, not HTTP, and the scheme has
+  # to say so — pointing this at 8123 fails at startup with a protocol error
+  # that names neither port nor protocol.
+  CLICKHOUSE_MIGRATION_URL: "clickhouse://langfuse-clickhouse:9000"
+  CLICKHOUSE_USER: "clickhouse"
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  REDIS_HOST: "langfuse-redis"
+  REDIS_PORT: "6379"
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: "langfuse"
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: "http://minio:9000"
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: "us-east-1"
+  # MinIO serves buckets as a path, not a subdomain, so the AWS SDK's default
+  # virtual-host addressing resolves to a hostname that does not exist.
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  NEXTAUTH_URL: "http://langfuse.jarvis.local"
+  TELEMETRY_ENABLED: "false"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-web
+  namespace: jarvis
+spec:
+  selector:
+    app: langfuse-web
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-web
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: langfuse-web
+  template:
+    metadata:
+      labels:
+        app: langfuse-web
+    spec:
+      initContainers:
+        # Same pattern as file-service: the shared Postgres has no `langfuse`
+        # database until something creates it.
+        - name: ensure-database
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              if [ "$(psql "$ADMIN_DATABASE_URL" -tAc "SELECT 1 FROM pg_database WHERE datname='langfuse'")" != "1" ]; then
+                psql "$ADMIN_DATABASE_URL" -c "CREATE DATABASE langfuse"
+              fi
+          envFrom:
+            - secretRef:
+                name: jarvis-secrets
+        # Langfuse will not create its own bucket, and the failure surfaces
+        # only once the first trace is ingested — long after startup looks fine.
+        - name: ensure-bucket
+          image: minio/mc:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mc alias set m http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              mc mb --ignore-existing m/langfuse
+          envFrom:
+            - secretRef:
+                name: jarvis-secrets
+      containers:
+        - name: langfuse-web
+          image: langfuse/langfuse:4
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: langfuse-config
+            - secretRef:
+                name: langfuse-secrets
+          ports:
+            - containerPort: 3000
+          resources:
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {memory: 2Gi}
+          readinessProbe:
+            httpGet: {path: /api/public/health, port: 3000}
+            # Migrations run on first boot against an empty ClickHouse, which
+            # takes appreciably longer than a normal start.
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            failureThreshold: 30
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-worker
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: langfuse-worker
+  template:
+    metadata:
+      labels:
+        app: langfuse-worker
+    spec:
+      containers:
+        - name: langfuse-worker
+          image: langfuse/langfuse-worker:4
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: langfuse-config
+            - secretRef:
+                name: langfuse-secrets
+          ports:
+            - containerPort: 3030
+          resources:
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {memory: 2Gi}

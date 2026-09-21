@@ -1,0 +1,92 @@
+# ClickHouse for Langfuse's trace storage.
+#
+# A single StatefulSet rather than the ClickHouse operator the official helm
+# chart installs. That chart deploys a ClickHouseCluster CRD, which in turn
+# requires a Keeper cluster ("must stay enabled while clickhouse.deploy is
+# true") — Keeper coordinates replication, so for one replica it is pure
+# overhead: an operator, two CRDs and an extra StatefulSet to keep alive on a
+# cluster that already restarts by hand more often than anyone would like.
+# CLICKHOUSE_CLUSTER_ENABLED=false on the Langfuse side matches this.
+#
+# Resources are set explicitly because the helm chart warns its own operator
+# default "~1Gi fallback OOMs under load". Storage is 10Gi, not the chart's
+# 100Gi: that default is sized for production trace volume, and this cluster
+# provisions via hostPath, where the number is advisory anyway — all five
+# existing PVCs together currently hold 200MB.
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-clickhouse
+  namespace: jarvis
+spec:
+  clusterIP: None
+  selector:
+    app: langfuse-clickhouse
+  ports:
+    - name: http
+      port: 8123
+    - name: native
+      port: 9000
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: langfuse-clickhouse
+  namespace: jarvis
+spec:
+  serviceName: langfuse-clickhouse
+  replicas: 1
+  selector:
+    matchLabels:
+      app: langfuse-clickhouse
+  template:
+    metadata:
+      labels:
+        app: langfuse-clickhouse
+    spec:
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:25.12
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CLICKHOUSE_DB
+              value: default
+            - name: CLICKHOUSE_USER
+              value: clickhouse
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: CLICKHOUSE_PASSWORD
+            # Without this the server refuses to grant the user the rights
+            # Langfuse's migrations need, and startup fails on the first
+            # CREATE TABLE rather than at login, which reads like a bug.
+            - name: CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
+              value: "1"
+          ports:
+            - name: http
+              containerPort: 8123
+            - name: native
+              containerPort: 9000
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+          resources:
+            requests: {cpu: "500m", memory: 2Gi}
+            limits: {memory: 4Gi}
+          readinessProbe:
+            httpGet: {path: /ping, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /ping, port: http}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi

@@ -1,0 +1,47 @@
+# Redis for Langfuse's ingestion queue (BullMQ).
+#
+# No auth and no persistence: this is a work queue reachable only from inside
+# the namespace, and its contents are trace events already durable in S3 —
+# losing the queue on a restart costs at most a few unprocessed events, not
+# data. `maxmemory-policy noeviction` is required by BullMQ, which the
+# official chart also sets: evicting a job mid-flight would lose it silently.
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-redis
+  namespace: jarvis
+spec:
+  selector:
+    app: langfuse-redis
+  ports:
+    - port: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-redis
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: langfuse-redis
+  template:
+    metadata:
+      labels:
+        app: langfuse-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          args: ["--maxmemory-policy", "noeviction"]
+          ports:
+            - containerPort: 6379
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          readinessProbe:
+            exec: {command: ["redis-cli", "ping"]}
+            initialDelaySeconds: 5
+            periodSeconds: 10

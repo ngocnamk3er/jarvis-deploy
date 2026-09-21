@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+
+# Published images, pinned. Langfuse's own compose tracks the floating `4`
+# tag; pinning avoids a background upgrade silently migrating the ClickHouse
+# schema on a restart.
+images:
+- name: langfuse/langfuse
+  newTag: "4"
+- name: langfuse/langfuse-worker
+  newTag: "4"
