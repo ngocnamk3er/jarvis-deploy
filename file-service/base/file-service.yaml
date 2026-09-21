@@ -85,6 +85,16 @@ spec:
                 secretKeyRef:
                   name: jarvis-secrets
                   key: EMBEDDING_API_KEY
+            # Reranking runs on OpenRouter too, so it reuses that key rather
+            # than adding a provider. Deliberately the general OPENROUTER key,
+            # not EMBEDDING_API_KEY: the latter is a separate OpenRouter key
+            # kept for embeddings, and pointing both at it would make one
+            # credential's spend limit stall retrieval entirely.
+            - name: RERANK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: OPENROUTER_API_KEY
           readinessProbe:
             httpGet:
               path: /
