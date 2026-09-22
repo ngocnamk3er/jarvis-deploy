@@ -28,6 +28,21 @@ data:
   LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
   NEXTAUTH_URL: "http://langfuse.jarvis.local"
   TELEMETRY_ENABLED: "false"
+  # Headless initialisation. Without it a fresh install starts with no
+  # organisation, no project and therefore no API keys, and the only way to
+  # get them is to click through the sign-up UI — which makes the keys the
+  # backend authenticates with a manual step that nothing in this repo
+  # records, and makes a rebuilt cluster need that step again. With it the
+  # keys are the ones deploy.sh already put in langfuse-secrets, so the
+  # backend can be configured before Langfuse has ever been started.
+  #
+  # The values are only read when the matching row does not exist yet, so
+  # this is safe on every restart and does not fight anything changed later
+  # in the UI.
+  LANGFUSE_INIT_ORG_ID: "jarvis"
+  LANGFUSE_INIT_ORG_NAME: "Jarvis"
+  LANGFUSE_INIT_PROJECT_ID: "jarvis"
+  LANGFUSE_INIT_PROJECT_NAME: "jarvis-test"
 ---
 apiVersion: v1
 kind: Service

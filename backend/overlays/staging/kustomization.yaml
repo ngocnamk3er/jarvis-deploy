@@ -13,7 +13,8 @@ images:
   newName: host.minikube.internal:5050/root/jarvis-backend
   newTag: f2b8296b
 
-# Only the 2 keys that must differ for staging's external hostname.
+# Only the keys that must differ for staging: its external hostnames,
+# and turning off tracing it has no server for.
 # Lives in its own file/path, never touched by the base or by test's
 # overlay, so there's nothing for a future change on either of those
 # to collide with.

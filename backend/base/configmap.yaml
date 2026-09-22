@@ -28,6 +28,14 @@ data:
   OIDC_JWKS_URL: "http://keycloak.jarvis.svc.cluster.local:8080/realms/jarvis/protocol/openid-connect/certs"
   OIDC_JWKS_CACHE_TTL_SECONDS: "3600"
   LLM_CACHE: "false"
+  # Langfuse. In-cluster Service DNS, same reasoning as the two service
+  # URLs above — the backend only posts trace batches, it never needs the
+  # hostname a browser would use. The keys that go with this live in
+  # jarvis-secrets (deploy.sh), which is deliberately not GitOps-managed.
+  LANGFUSE_HOST: "http://langfuse-web.jarvis.svc.cluster.local:3000"
+  # Stamped on every trace. Keeps this cluster's runs distinguishable from
+  # staging's if both ever report into one Langfuse.
+  LANGFUSE_ENVIRONMENT: "test"
   # Deliberately kept on agent-sandbox's stock pool, not jarvis's own — see
   # sandbox_manager.py's exec_bash() docstring (jarvis-backend repo) for the
   # bash -c wrapping fix that makes this actually work correctly now.

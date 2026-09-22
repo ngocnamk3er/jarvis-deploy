@@ -6,3 +6,9 @@ metadata:
 data:
   FRONTEND_URL: "http://staging.jarvis.local"
   OIDC_ISSUER: "http://auth.staging.jarvis.local/realms/jarvis"
+  # Staging runs no Langfuse of its own, and the base points at a Service
+  # that only exists on the test cluster. Empty host turns tracing off
+  # outright (app/core/observability.py) rather than leaving the SDK to
+  # retry a hostname that will never resolve.
+  LANGFUSE_HOST: ""
+  LANGFUSE_ENVIRONMENT: "staging"
