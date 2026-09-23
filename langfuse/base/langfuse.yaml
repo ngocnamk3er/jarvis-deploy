@@ -27,6 +27,20 @@ data:
   # virtual-host addressing resolves to a hostname that does not exist.
   LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
   NEXTAUTH_URL: "http://langfuse.jarvis.local"
+  # Code evaluators need somewhere to execute; without this Langfuse rejects
+  # every run with "Code eval dispatcher is not configured". The only two
+  # options are this one and aws-lambda, and Lambda is not worth standing up
+  # for a local cluster.
+  #
+  # Read the name literally: "insecure-local" runs the evaluator's source
+  # inside the worker process with no sandbox. That is acceptable here
+  # because the only people who can write an evaluator are the people who
+  # already administer this cluster — it would not be on a shared instance.
+  #
+  # It also only accepts TypeScript. Python evaluators are storable (the
+  # EvaluatorSourceCodeLanguage enum lists both) but the local dispatcher
+  # rejects them at run time; Python needs the Lambda dispatcher.
+  LANGFUSE_CODE_EVAL_DISPATCHER: "insecure-local"
   TELEMETRY_ENABLED: "false"
   # Headless initialisation. Without it a fresh install starts with no
   # organisation, no project and therefore no API keys, and the only way to
