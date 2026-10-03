@@ -17,4 +17,4 @@ resources:
 images:
 - name: jarvis-file-service
   newName: host.minikube.internal:5050/root/jarvis-file-service
-  newTag: 5ecee504
+  newTag: 2e6c6497
