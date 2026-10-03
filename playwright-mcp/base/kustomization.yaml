@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- playwright-mcp.yaml
+
+# No images: transformer and no configmap here — unlike jarvis's own
+# services, this runs Microsoft's prebuilt image as-is (tag pinned directly
+# in playwright-mcp.yaml, nothing for Jenkins to bump) and needs no
+# app-level settings beyond the CLI args already baked into the Deployment.

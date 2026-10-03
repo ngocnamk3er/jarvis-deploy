@@ -12,3 +12,6 @@ data:
   # retry a hostname that will never resolve.
   LANGFUSE_HOST: ""
   LANGFUSE_ENVIRONMENT: "staging"
+  # Same reasoning as LANGFUSE_HOST above — no playwright-mcp Application
+  # deploys to staging's cluster, so the base's URL would never resolve.
+  PLAYWRIGHT_MCP_URL: ""

@@ -40,3 +40,9 @@ data:
   # sandbox_manager.py's exec_bash() docstring (jarvis-backend repo) for the
   # bash -c wrapping fix that makes this actually work correctly now.
   AGENTSANDBOX_WARMPOOL: "python-sandbox-pool"
+  # Microsoft's official Playwright MCP server — see
+  # jarvis-deploy/playwright-mcp/. In-cluster Service DNS, same reasoning as
+  # every other *_SERVICE_URL above. Blanked for staging (see
+  # overlays/staging/configmap-patch.yaml) — that cluster has no
+  # playwright-mcp Application of its own.
+  PLAYWRIGHT_MCP_URL: "http://playwright-mcp.jarvis.svc.cluster.local:8931/mcp"

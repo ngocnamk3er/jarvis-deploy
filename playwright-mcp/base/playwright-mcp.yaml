@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: playwright-mcp
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playwright-mcp
+  template:
+    metadata:
+      labels:
+        app: playwright-mcp
+    spec:
+      containers:
+        - name: playwright-mcp
+          # Official image, pinned (not :latest) — same reasoning as every
+          # other image reference in this repo. No Jenkins build here: this
+          # is Microsoft's prebuilt image used as-is, never jarvis's own.
+          image: mcr.microsoft.com/playwright/mcp:v0.0.82
+          imagePullPolicy: IfNotPresent
+          # Streamable-HTTP mode, not the default stdio — jarvis-backend
+          # reaches this over the network (langchain-mcp-adapters,
+          # transport="http"), it doesn't spawn a subprocess. --no-sandbox
+          # is required for Chromium to run as a non-root container user.
+          args:
+            - --headless
+            - --browser=chromium
+            - --no-sandbox
+            - --port=8931
+            - --host=0.0.0.0
+          ports:
+            - containerPort: 8931
+          volumeMounts:
+            # Kubernetes' default /dev/shm is far too small for Chromium
+            # (the classic "Chromium in Docker" gotcha) — without this it
+            # crash-loops under any real page load.
+            - name: dshm
+              mountPath: /dev/shm
+          resources:
+            # Starting point, not measured yet — Chromium's baseline plus
+            # headroom for one active page. Adjust after real use, the same
+            # way file-service's OCR settings got tuned from first guesses.
+            requests:
+              memory: 512Mi
+              cpu: 250m
+            limits:
+              memory: 1Gi
+              cpu: "1"
+          readinessProbe:
+            # No documented HTTP health endpoint for this image — a plain
+            # GET on /mcp isn't valid MCP protocol, so a TCP check is the
+            # honest option rather than a probe path likely to 404/400.
+            tcpSocket:
+              port: 8931
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8931
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: playwright-mcp
+  namespace: jarvis
+spec:
+  selector:
+    app: playwright-mcp
+  ports:
+    - port: 8931
+      targetPort: 8931
