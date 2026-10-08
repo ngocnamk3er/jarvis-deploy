@@ -3,11 +3,7 @@ kind: Kustomization
 
 resources:
 - ../../base
-
-# No images: entry yet — this service has never been built. jarvis-
-# conversation-service's own Jenkinsfile adds it here on its first run
-# (`kustomize edit set image jarvis-conversation-service=...` from this
-# directory), same as backend's "Bump manifest" stage does. Until then,
-# ArgoCD deploys the base's literal `jarvis-conversation-service:local` tag,
-# which will sit in ImagePullBackOff — expected for a brand-new service
-# before its first pipeline run.
+images:
+- name: jarvis-conversation-service
+  newName: host.minikube.internal:5050/root/jarvis-conversation-service
+  newTag: c50642b0
