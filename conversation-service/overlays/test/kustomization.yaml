@@ -6,4 +6,4 @@ resources:
 images:
 - name: jarvis-conversation-service
   newName: host.minikube.internal:5050/root/jarvis-conversation-service
-  newTag: c50642b0
+  newTag: 5efc7973
