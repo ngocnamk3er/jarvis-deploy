@@ -58,6 +58,17 @@ LF_CLICKHOUSE_PASSWORD=$(lf_keep CLICKHOUSE_PASSWORD 'openssl rand -hex 16')
 LF_PUBLIC_KEY=$(lf_keep LANGFUSE_INIT_PROJECT_PUBLIC_KEY 'echo "pk-lf-$(uuidgen)"')
 LF_SECRET_KEY=$(lf_keep LANGFUSE_INIT_PROJECT_SECRET_KEY 'echo "sk-lf-$(uuidgen)"')
 
+# Same reasoning as the LF_* values above: this must stay stable across
+# reruns, or a restarted RabbitMQ pod comes back up with a different
+# password than the one already baked into its own persisted mnesia state
+# (see rabbitmq/base/rabbitmq.yaml's PVC) and locks itself out. jarvis-
+# secrets has no read-back helper of its own the way langfuse-secrets does
+# (lf_keep above) — add one here rather than a static default like
+# MINIO_ROOT_PASSWORD uses, since unlike that one, this value is never set
+# from outside (no RABBITMQ_PASSWORD in any app repo's .env).
+RABBITMQ_PASSWORD=$(kubectl get secret jarvis-secrets -n "$NS" -o jsonpath='{.data.RABBITMQ_PASSWORD}' 2>/dev/null | base64 -d || true)
+[ -n "$RABBITMQ_PASSWORD" ] || RABBITMQ_PASSWORD=$(openssl rand -hex 16)
+
 kubectl create secret generic langfuse-secrets -n "$NS" \
   --from-literal=DATABASE_URL="postgresql://jarvis:jarvis@postgres.jarvis.svc.cluster.local:5432/langfuse" \
   --from-literal=ENCRYPTION_KEY="$LF_ENCRYPTION_KEY" \
@@ -86,6 +97,8 @@ kubectl create secret generic jarvis-secrets -n "$NS" \
   --from-literal=EMBEDDING_API_KEY="${EMBEDDING_API_KEY:-}" \
   --from-literal=LANGFUSE_PUBLIC_KEY="$LF_PUBLIC_KEY" \
   --from-literal=LANGFUSE_SECRET_KEY="$LF_SECRET_KEY" \
+  --from-literal=RABBITMQ_USER="jarvis" \
+  --from-literal=RABBITMQ_PASSWORD="$RABBITMQ_PASSWORD" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create secret generic jarvis-frontend-secrets -n "$NS" \
@@ -120,7 +133,7 @@ echo "==> 4/4  Registering this repo's Applications with ArgoCD"
 # only waits on the test-cluster ones below — the staging cluster may not
 # even be up yet during a fresh bootstrap.
 kubectl apply -f "$ROOT/argocd/"
-for app in jarvis-shared jarvis-backend jarvis-frontend jarvis-keycloak jarvis-conversation-service jarvis-file-service jarvis-langfuse; do
+for app in jarvis-shared jarvis-backend jarvis-frontend jarvis-keycloak jarvis-conversation-service jarvis-file-service jarvis-langfuse jarvis-rabbitmq jarvis-ocr-worker; do
   kubectl -n argocd wait --for=jsonpath='{.status.sync.status}'=Synced "application/${app}" --timeout=120s
 done
 

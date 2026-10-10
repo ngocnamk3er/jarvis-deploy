@@ -1,0 +1,68 @@
+# jarvis-ocr-worker — consumer-only, no Service, no Ingress: nothing routes
+# to it and nothing probes it over HTTP, since it has no HTTP server at all
+# (same shape as langfuse-worker, see langfuse/base/langfuse.yaml). It's
+# reachable only through RabbitMQ.
+#
+# No initContainers: unlike file-service, this service owns no database or
+# migration of its own — it writes to the same file_nodes table
+# jarvis-file-service already created and migrates (see that repo's
+# migrations/). Deploying this before file-service's migration 0002 has
+# landed means its first status write 500s on a missing column — sync
+# order matters: rabbitmq, then file-service, then this.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ocr-worker
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ocr-worker
+  template:
+    metadata:
+      labels:
+        app: ocr-worker
+    spec:
+      containers:
+        - name: ocr-worker
+          image: jarvis-ocr-worker:local
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: ocr-worker-config
+            - secretRef:
+                name: jarvis-secrets
+          env:
+            # jarvis-secrets' own DATABASE_URL key belongs to jarvis-backend
+            # (the shared `jarvis` database) — same remap file-service does
+            # for its own copy of this same jarvis_files database.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: FILE_DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: EMBEDDING_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: EMBEDDING_API_KEY
+            # RABBITMQ_USER/RABBITMQ_PASSWORD need no remap here — unlike
+            # MINIO_ROOT_USER/PASSWORD above, jarvis-secrets stores them
+            # under these exact key names, so the envFrom/secretRef block
+            # already injects them with the name app/core/config.py reads.
+          resources:
+            # Generous, not measured — PaddleOCR's own footprint alone is
+            # in the hundreds of MB once model weights are loaded.
+            requests: {cpu: 250m, memory: 1Gi}
+            limits: {memory: 3Gi}

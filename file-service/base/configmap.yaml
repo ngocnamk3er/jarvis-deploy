@@ -16,3 +16,4 @@ data:
   # 0.41 (bge-m3 was 0.65 / 0.32). 1024 keeps the Qdrant collection size.
   EMBEDDING_MODEL: "openai/text-embedding-3-large"
   EMBEDDING_DIMENSIONS: "1024"
+  RABBITMQ_HOST: "rabbitmq"
