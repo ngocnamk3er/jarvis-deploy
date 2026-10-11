@@ -15,7 +15,13 @@ metadata:
   name: ocr-worker
   namespace: jarvis
 spec:
-  replicas: 1
+  # 2, not 1 — this is what makes RabbitMQ's "competing consumers" pattern
+  # actually observable: both pods open their own connection/channel to
+  # the same ocr.ingest queue, each with its own prefetch_count=1, and
+  # RabbitMQ round-robins deliveries between whichever is free. No code
+  # change needed for this — the queue, not the app, is what decides which
+  # pod gets the next message.
+  replicas: 2
   selector:
     matchLabels:
       app: ocr-worker
