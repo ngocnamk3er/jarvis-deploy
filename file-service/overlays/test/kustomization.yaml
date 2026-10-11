@@ -17,4 +17,4 @@ resources:
 images:
 - name: jarvis-file-service
   newName: host.minikube.internal:5050/root/jarvis-file-service
-  newTag: bbcc2016
+  newTag: b6f69cb4
