@@ -7,7 +7,11 @@ data:
   APP_NAME: "Jarvis Embedding Worker"
   APP_VERSION: "0.1.0"
   QDRANT_URL: "http://qdrant:6333"
-  EMBEDDING_BASE_URL: "https://openrouter.ai/api/v1"
-  EMBEDDING_MODEL: "openai/text-embedding-3-large"
+  # Self-hosted — must stay identical to file-service-config's own
+  # EMBEDDING_BASE_URL/MODEL (see that file's comment for why: this
+  # service indexes with whatever model file-service queries with later,
+  # and a mismatch silently produces garbage search results, not an error).
+  EMBEDDING_BASE_URL: "http://embedding-server/v1"
+  EMBEDDING_MODEL: "bge-m3"
   EMBEDDING_DIMENSIONS: "1024"
   RABBITMQ_HOST: "rabbitmq"

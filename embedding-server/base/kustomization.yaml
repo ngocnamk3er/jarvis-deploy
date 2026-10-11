@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- embedding-server.yaml
+
+# No images: transformer — published image, pinned directly above, same
+# reasoning as rabbitmq/base.

@@ -1,0 +1,83 @@
+# Self-hosted embedding model, serving jarvis-embedding-worker (indexing)
+# and jarvis-file-service (query-time search) — both already talk to it as
+# a plain OpenAI-compatible /v1/embeddings client (app/services/
+# embeddings.py in each repo), so switching from OpenRouter to this needed
+# zero code changes anywhere, only configmap values (EMBEDDING_BASE_URL/
+# MODEL) in file-service and embedding-worker's own manifests.
+#
+# Image: Hugging Face's Text Embeddings Inference (TEI), CPU build — no
+# GPU in this cluster. Model: BAAI/bge-m3, chosen because it's already
+# 1024-dim (file-service/app/search/vector_store.py's existing Qdrant
+# collection size — no collection rebuild needed) and was already the
+# documented fallback choice in file-service's config.py before this.
+#
+# PVC-backed: confirmed live, a cold first pull of bge-m3's ONNX weights
+# (~2.2GB) took ~12 minutes over this cluster's external network — without
+# a volume, every pod restart would repeat that. The generous readiness
+# failureThreshold below covers exactly that first-start window; a restart
+# with the model already cached is fast.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: embedding-server-data
+  namespace: jarvis
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: embedding-server
+  namespace: jarvis
+spec:
+  selector:
+    app: embedding-server
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: embedding-server
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: embedding-server
+  template:
+    metadata:
+      labels:
+        app: embedding-server
+    spec:
+      containers:
+        - name: embedding-server
+          image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
+          imagePullPolicy: IfNotPresent
+          args: ["--model-id", "BAAI/bge-m3"]
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests: {cpu: 1000m, memory: 3Gi}
+            limits: {memory: 4Gi}
+          readinessProbe:
+            httpGet: {path: /health, port: 80}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 90
+          livenessProbe:
+            httpGet: {path: /health, port: 80}
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: embedding-server-data

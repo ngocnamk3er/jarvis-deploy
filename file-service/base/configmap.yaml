@@ -11,9 +11,14 @@ data:
   MINIO_BUCKET: "jarvis-files"
   MINIO_SECURE: "false"
   QDRANT_URL: "http://qdrant:6333"
-  EMBEDDING_BASE_URL: "https://openrouter.ai/api/v1"
-  # text-embedding-3-large @1024 dims — BEIR SciFact nDCG@10 0.77 / NFCorpus
-  # 0.41 (bge-m3 was 0.65 / 0.32). 1024 keeps the Qdrant collection size.
-  EMBEDDING_MODEL: "openai/text-embedding-3-large"
+  # Self-hosted (see embedding-server/base/) instead of OpenRouter's
+  # text-embedding-3-large — a deliberate quality tradeoff, not a free
+  # swap: this codebase's own prior BEIR benchmark found bge-m3 behind
+  # text-embedding-3-large (SciFact nDCG@10 0.65 vs 0.77, NFCorpus 0.32 vs
+  # 0.41). Both are 1024-dim, so the existing Qdrant collection needed no
+  # rebuild — but a real deployment should re-run that same benchmark
+  # before trusting bge-m3's numbers over the ones already measured here.
+  EMBEDDING_BASE_URL: "http://embedding-server/v1"
+  EMBEDDING_MODEL: "bge-m3"
   EMBEDDING_DIMENSIONS: "1024"
   RABBITMQ_HOST: "rabbitmq"
