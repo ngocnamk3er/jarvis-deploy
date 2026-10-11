@@ -11,4 +11,4 @@ resources:
 images:
 - name: jarvis-embedding-worker
   newName: host.minikube.internal:5050/root/jarvis-embedding-worker
-  newTag: local
+  newTag: 5d0b431b
