@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: embedding-worker-config
+  namespace: jarvis
+data:
+  APP_NAME: "Jarvis Embedding Worker"
+  APP_VERSION: "0.1.0"
+  QDRANT_URL: "http://qdrant:6333"
+  EMBEDDING_BASE_URL: "https://openrouter.ai/api/v1"
+  EMBEDDING_MODEL: "openai/text-embedding-3-large"
+  EMBEDDING_DIMENSIONS: "1024"
+  RABBITMQ_HOST: "rabbitmq"

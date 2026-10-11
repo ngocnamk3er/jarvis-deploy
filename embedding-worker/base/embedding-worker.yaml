@@ -1,0 +1,52 @@
+# jarvis-embedding-worker — consumer-only, same shape as ocr-worker.yaml:
+# no Service, no Ingress, no probes, since it has no HTTP server at all.
+# Reachable only through RabbitMQ's ocr.embed queue.
+#
+# No initContainers, no MinIO credentials: this service never touches raw
+# file bytes, only chunks jarvis-ocr-worker already extracted and handed
+# off in the queue message itself. Same sync order concern as ocr-worker
+# re: file_nodes columns, but it writes the same columns ocr-worker
+# already proved exist by the time any message reaches this queue.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: embedding-worker
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: embedding-worker
+  template:
+    metadata:
+      labels:
+        app: embedding-worker
+    spec:
+      containers:
+        - name: embedding-worker
+          image: jarvis-embedding-worker:local
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: embedding-worker-config
+            - secretRef:
+                name: jarvis-secrets
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: FILE_DATABASE_URL
+            - name: EMBEDDING_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-secrets
+                  key: EMBEDDING_API_KEY
+            # RABBITMQ_USER/RABBITMQ_PASSWORD need no remap — jarvis-secrets
+            # stores them under these exact key names already (see
+            # ocr-worker.yaml's own comment for the full reasoning).
+          resources:
+            # Much lighter than ocr-worker — no OCR model weights, just
+            # network clients. Not measured, just clearly smaller.
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 1Gi}

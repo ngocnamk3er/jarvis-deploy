@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+
+# Placeholder until jarvis-embedding-worker's Jenkins job runs its first
+# build — the "Bump manifest" stage overwrites this with the real pushed
+# tag (same flow as every other service here). Pod sits in
+# ImagePullBackOff until that first build lands.
+images:
+- name: jarvis-embedding-worker
+  newName: host.minikube.internal:5050/root/jarvis-embedding-worker
+  newTag: local
