@@ -12,4 +12,4 @@ resources:
 images:
 - name: jarvis-ocr-worker
   newName: host.minikube.internal:5050/root/jarvis-ocr-worker
-  newTag: 370f8b5a
+  newTag: b6666fc7
