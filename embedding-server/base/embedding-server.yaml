@@ -58,7 +58,16 @@ spec:
         - name: embedding-server
           image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
           imagePullPolicy: IfNotPresent
-          args: ["--model-id", "BAAI/bge-m3"]
+          # --max-batch-tokens default is 16384 — confirmed live this is
+          # the actual OOM cause, not just an undersized limit: raising
+          # the memory limit to 8Gi still OOMKilled in ~7s, right at the
+          # warmup step, which runs a synthetic batch sized off this flag.
+          # The runtime appears to size its working buffers off the host's
+          # full visible memory rather than the cgroup limit, so a bigger
+          # limit alone doesn't fix it — capping the batch size directly
+          # does. 2048 is generous for this workload (chunks run ~300
+          # words/~400-450 tokens each, never batched anywhere near 16k).
+          args: ["--model-id", "BAAI/bge-m3", "--max-batch-tokens", "2048"]
           ports:
             - containerPort: 80
           volumeMounts:
