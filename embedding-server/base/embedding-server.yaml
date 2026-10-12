@@ -65,8 +65,13 @@ spec:
             - name: data
               mountPath: /data
           resources:
-            requests: {cpu: 1000m, memory: 3Gi}
-            limits: {memory: 4Gi}
+            # Bumped after an OOMKilled crash loop confirmed live: 4Gi
+            # wasn't enough for the ONNX runtime's warmup pass on top of
+            # bge-m3's ~2.2GB weights (model load succeeds fine; it's the
+            # warm-up inference request right after that needs extra
+            # headroom for activations/the runtime's own memory arena).
+            requests: {cpu: 1000m, memory: 4Gi}
+            limits: {memory: 8Gi}
           readinessProbe:
             httpGet: {path: /health, port: 80}
             initialDelaySeconds: 30
