@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
 - deployment.yaml
+- service.yaml
 
 # No images: transformer here — set per environment in each overlay, same
 # pattern as sandbox/base and agentsandbox/base.

@@ -1,0 +1,20 @@
+# The Service jarvis-backend's sandbox_manager addresses the router through
+# (_ROUTER_URL = http://sandbox-router-svc.agent-sandbox-system.svc.cluster.local:8080).
+# Upstream's quickstart manifest ships it next to the Deployment, but only the
+# Deployment was carried into this repo — the Service used to exist because it
+# was applied by hand from SANDBOX-SETUP.md step 2, so recreating the cluster
+# (2026-11-11) left every `bash` call failing with "Name or service not known".
+apiVersion: v1
+kind: Service
+metadata:
+  name: sandbox-router-svc
+  namespace: agent-sandbox-system
+spec:
+  type: ClusterIP
+  selector:
+    app: sandbox-router
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
