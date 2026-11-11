@@ -97,6 +97,7 @@ kubectl create secret generic jarvis-secrets -n "$NS" \
   --from-literal=EMBEDDING_API_KEY="${EMBEDDING_API_KEY:-}" \
   --from-literal=LANGFUSE_PUBLIC_KEY="$LF_PUBLIC_KEY" \
   --from-literal=LANGFUSE_SECRET_KEY="$LF_SECRET_KEY" \
+  --from-literal=CLICKHOUSE_PASSWORD="$LF_CLICKHOUSE_PASSWORD" \
   --from-literal=RABBITMQ_USER="jarvis" \
   --from-literal=RABBITMQ_PASSWORD="$RABBITMQ_PASSWORD" \
   --dry-run=client -o yaml | kubectl apply -f -
