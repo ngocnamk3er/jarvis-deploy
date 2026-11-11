@@ -26,7 +26,7 @@ spec:
       # updating (`kubectl get svc ingress-nginx-controller -n ingress-nginx`)
       # if the Service itself is ever deleted/recreated.
       hostAliases:
-        - ip: "10.102.210.163"
+        - ip: "10.109.24.118"
           hostnames:
             - "auth.jarvis.local"
       containers:
