@@ -1,0 +1,14 @@
+# Helm values for KEDA (chart kedacore/keda 2.21.1), installed by hand:
+#   helm repo add kedacore https://kedacore.github.io/charts
+#   helm install keda kedacore/keda --version 2.21.1 -n keda --create-namespace -f keda/values.yaml
+# Smaller than the defaults, which reserve a lot more than a one-machine test cluster needs.
+resources:
+  operator:
+    requests: {cpu: 50m, memory: 100Mi}
+    limits: {memory: 512Mi}
+  metricServer:
+    requests: {cpu: 50m, memory: 100Mi}
+    limits: {memory: 512Mi}
+  webhooks:
+    requests: {cpu: 20m, memory: 50Mi}
+    limits: {memory: 256Mi}

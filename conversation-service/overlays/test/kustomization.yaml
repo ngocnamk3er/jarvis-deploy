@@ -3,6 +3,16 @@ kind: Kustomization
 
 resources:
 - ../../base
+- scaledobject.yaml
+# The base's CPU HPA is replaced here by the KEDA ScaledObject above: two autoscalers cannot own one Deployment.
+patches:
+- patch: |-
+    $patch: delete
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    metadata:
+      name: conversation-service
+      namespace: jarvis
 images:
 - name: jarvis-conversation-service
   newName: host.minikube.internal:5050/root/jarvis-conversation-service

@@ -1,0 +1,45 @@
+# Scales conversation-service on how much work it holds, not on CPU. The service mostly waits (on Postgres), so it can be
+# refusing requests while its CPU is still low; the number of requests in flight says so directly, and is the very number
+# the service refuses on (LOAD_SHED_MAX_INFLIGHT, 15). Both triggers read what the service reports at /metrics
+# (jarvis-backend app/core/load_shed.py), through the small Prometheus in monitoring/, and KEDA turns them into an HPA.
+# The replica count is the larger of what the two ask for.
+#
+#  1. Requests in flight. About 70% of the limit per replica (10 of 15), so a replica is added before anybody is refused.
+#     The sum is capped at limit x replicas, so under overload the count steps up (1 -> 2 -> 3) rather than jumping.
+#  2. Requests refused (503) per second. Any sustained refusal means the replicas are full: 2 per second per replica
+#     already asks for another one. It decays to 0 within the 30 s window once the pressure is gone.
+#
+# Measured on the test cluster (2026-11-24): with these metrics a replica is added about 20 s after the load starts, against
+# 2-3 minutes with the CPU HPA this replaces. A ScaledObject cannot coexist with an HPA on the same Deployment, so the base's
+# CPU HPA is removed in this overlay (kustomization.yaml); staging keeps it until KEDA is installed there.
+#
+# maxReplicaCount is bounded by Postgres, not by load: each replica can hold 15 connections (5 + 10 overflow) against a
+# max_connections of 100 shared by every service (3 x 15 = 45 on top of ~15 used by the rest). Raise it only together with
+# a pool_size / PgBouncer decision.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: conversation-service
+  namespace: jarvis
+spec:
+  scaleTargetRef:
+    name: conversation-service
+  minReplicaCount: 1
+  maxReplicaCount: 3
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          # Load comes in waves; waiting five minutes before shrinking stops it flapping between 1 and 2 replicas.
+          stabilizationWindowSeconds: 300
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.monitoring.svc.cluster.local:9090
+        query: sum(jarvis_inflight_requests{app="conversation-service"})
+        threshold: "10"
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.monitoring.svc.cluster.local:9090
+        query: sum(rate(jarvis_shed_requests_total{app="conversation-service"}[30s]))
+        threshold: "2"

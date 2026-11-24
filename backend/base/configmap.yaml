@@ -46,3 +46,8 @@ data:
   # Most conversations that may have a sandbox pod at once; past it the idlest idle sandbox is paused to make room,
   # and a request that still finds no slot waits then fails with a clear error (jarvis-backend SANDBOX-SETUP.md).
   AGENTSANDBOX_MAX_PODS: "10"
+  # Most requests the backend works on at once (per process) before it answers the next with 503 + Retry-After.
+  # 17 comes from the capacity sweep of 2026-11-24 (loadlab): the backend tops out at ~130-150 req/s on one core, and
+  # throughput x (service time + 100 ms of waiting) is about 17. Chat has its own limit (LOAD_SHED_MAX_INFLIGHT_CHAT,
+  # default 20), which nobody has measured.
+  LOAD_SHED_MAX_INFLIGHT: "17"
