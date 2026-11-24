@@ -1,0 +1,33 @@
+# Adds conversation-service replicas when the ones running are busy. Stateless, so it can scale out (jarvis-backend
+# cannot yet: its stream/cancel and sandbox-admission state is per process).
+#
+# It reacts in 30-120 s (metric scrape, HPA sync, pod start), so it is the slow half of a pair: the in-flight limit in the
+# service (LOAD_SHED_MAX_INFLIGHT, refusing with 503 + Retry-After) is what covers those first seconds. That is why the
+# target is 60%, well under where the limit bites, so replicas are added before anybody is refused.
+#
+# maxReplicas is bounded by Postgres, not by CPU: every replica can hold 15 connections (5 + 10 overflow) against a
+# max_connections of 100 shared by every service. 3 x 15 = 45 on top of what the others use (~15 at the moment) fits.
+# Raise it only together with a pool_size / PgBouncer decision. The test cluster is one node, so more would not help anyway.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: conversation-service
+  namespace: jarvis
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: conversation-service
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+  behavior:
+    scaleDown:
+      # Load comes in waves; waiting five minutes before shrinking stops it flapping between 1 and 2 replicas.
+      stabilizationWindowSeconds: 300

@@ -4,9 +4,11 @@ metadata:
   name: backend
   namespace: jarvis
 spec:
-  # Fixed at 1 — chat_service.py tracks in-flight streams/cancellation in a
-  # per-process dict with no shared queue, so multiple replicas without
-  # sticky sessions would silently break the Stop button. See plan.
+  # 1 by default. More than one works as long as REDIS_URL is set: the Stop button reaches the replica that runs the
+  # chat (the conversation lock names it, core/run_control.py), the sandbox ceiling and the research tasks are shared
+  # (core/sandbox_coordination.py, core/run_control.py), and a replica that is replaced finishes its runs first (below).
+  # What is NOT covered: a run lives in the memory of one replica, so it ends if that replica crashes, and the browser
+  # cannot reattach to it (a queue would, at a lot more machinery: see SCALE-OUT.md in jarvis-backend).
   replicas: 1
   selector:
     matchLabels:
@@ -21,6 +23,10 @@ spec:
       # and jarvis-deploy's argocd/agentsandbox-application.yaml (RBAC
       # applied separately, deliberately not via automated GitOps).
       serviceAccountName: jarvis-backend
+      # A replica being replaced (a rolling update, a scale-down) stops taking requests, and uvicorn waits for the open
+      # streams to end before the app drains the runs that have no browser attached (SHUTDOWN_DRAIN_SECONDS, 600).
+      # The default 30 s killed every run that was still going; a chat run can take minutes.
+      terminationGracePeriodSeconds: 900
       # Named here rather than inherited. deploy.sh attaches this secret to
       # the namespace's *default* ServiceAccount, which is how frontend,
       # keycloak, file-service and conversation-service pull from the GitLab
@@ -45,6 +51,21 @@ spec:
                 name: backend-config
             - secretRef:
                 name: jarvis-secrets
+          # With a request the pod is Burstable instead of BestEffort, so under node memory pressure it is no longer the
+          # first thing evicted. CPU: 500m is what this process used under a GET load on the test cluster (~740m peak
+          # at ~120 req/s, one uvicorn process, so about a core is its ceiling); no CPU limit on purpose, a limit only
+          # throttles it. Memory: 298Mi peak under that same load; the 2Gi limit is a generous guess for real chat runs
+          # (nothing measured them), there to stop a leak from taking the node rather than to size the pod. Re-measure
+          # with `kubectl top pod` under real chat use.
+          # A few seconds' head start so the Service and the ingress stop sending this pod new requests before it
+          # begins to shut down.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          resources:
+            requests: {cpu: 500m, memory: 512Mi}
+            limits: {memory: 2Gi}
           readinessProbe:
             httpGet:
               path: /

@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
 - conversation-service.yaml
 - configmap.yaml
+- hpa.yaml
 
 # No images: transformer here on purpose — same reasoning as backend/base:
 # the image tag differs per environment, set in each overlay instead.

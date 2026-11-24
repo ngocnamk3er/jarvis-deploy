@@ -40,3 +40,9 @@ data:
   # sandbox_manager.py's exec_bash() docstring (jarvis-backend repo) for the
   # bash -c wrapping fix that makes this actually work correctly now.
   AGENTSANDBOX_WARMPOOL: "python-sandbox-pool"
+  # Per-conversation run lock (one chat run at a time per conversation). If this is unreachable the backend falls
+  # back to an in-process lock, so it is never a hard dependency.
+  REDIS_URL: "redis://jarvis-redis.jarvis.svc.cluster.local:6379/0"
+  # Most conversations that may have a sandbox pod at once; past it the idlest idle sandbox is paused to make room,
+  # and a request that still finds no slot waits then fails with a clear error (jarvis-backend SANDBOX-SETUP.md).
+  AGENTSANDBOX_MAX_PODS: "10"

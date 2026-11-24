@@ -1,0 +1,47 @@
+# Redis for the backend's per-conversation run lock (jarvis-backend app/core/conversation_lock.py).
+#
+# The lock keys are short leases (30 s TTL, renewed while a chat run is alive), so there is nothing here worth
+# keeping: no persistence, a tiny memory cap. If this pod restarts, the heartbeat of every running chat re-takes its
+# key within one third of a TTL; if it is down, the backend falls back to an in-process lock (fine for the single
+# backend replica) and chat keeps working. Separate from langfuse-redis on purpose: that one is a work queue whose
+# memory policy and restarts matter to Langfuse, not to chat.
+apiVersion: v1
+kind: Service
+metadata:
+  name: jarvis-redis
+  namespace: jarvis
+spec:
+  selector:
+    app: jarvis-redis
+  ports:
+    - port: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jarvis-redis
+  namespace: jarvis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jarvis-redis
+  template:
+    metadata:
+      labels:
+        app: jarvis-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          args: ["--save", "", "--appendonly", "no", "--maxmemory", "32mb", "--maxmemory-policy", "noeviction"]
+          ports:
+            - containerPort: 6379
+          resources:
+            requests: {cpu: 25m, memory: 32Mi}
+            limits: {memory: 64Mi}
+          readinessProbe:
+            exec: {command: ["redis-cli", "ping"]}
+            initialDelaySeconds: 3
+            periodSeconds: 10

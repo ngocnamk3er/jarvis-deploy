@@ -44,6 +44,10 @@ spec:
           volumeMounts:
             - name: minio-data
               mountPath: /data
+          # Requests only, no limits: with a request the pod is Burstable instead of BestEffort, so under node
+          # memory pressure it is no longer the first thing evicted. It holds user files and Langfuse's raw events.
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
           readinessProbe:
             httpGet:
               path: /minio/health/ready

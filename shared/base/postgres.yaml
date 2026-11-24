@@ -29,6 +29,10 @@ spec:
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
+          # Requests only, no limits: with a request the pod is Burstable instead of BestEffort, so under node
+          # memory pressure it is no longer the first thing evicted. Postgres holds every service's data, so it should be last in line.
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "jarvis"]

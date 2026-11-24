@@ -4,7 +4,8 @@ metadata:
   name: conversation-service
   namespace: jarvis
 spec:
-  replicas: 1
+  # No `replicas:` on purpose. hpa.yaml owns the count; a number here would make ArgoCD set it back to that number on
+  # every sync, undoing whatever the autoscaler had just decided.
   selector:
     matchLabels:
       app: conversation-service
@@ -72,6 +73,13 @@ spec:
                 secretKeyRef:
                   name: jarvis-secrets
                   key: CONVERSATION_DATABASE_URL
+          # The HPA's utilization is a percentage of this CPU request, and without a request it does nothing at all.
+          # 250m: one uvicorn process is single-threaded, so at its ceiling (~120 req/s on the test cluster) it used
+          # ~775m, and scaling out at 60% of 250m = 150m adds a replica long before that. Memory peaked at 87Mi under
+          # that load. No CPU limit (it would only throttle); the memory limit stops a leak taking the node.
+          resources:
+            requests: {cpu: 250m, memory: 128Mi}
+            limits: {memory: 512Mi}
           readinessProbe:
             httpGet:
               path: /

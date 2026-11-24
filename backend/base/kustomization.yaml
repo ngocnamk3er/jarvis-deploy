@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
 - backend.yaml
 - configmap.yaml
+- redis.yaml
 
 # No images: transformer here on purpose — the image tag differs per
 # environment, so it's set in each overlay (overlays/test, overlays/staging)
