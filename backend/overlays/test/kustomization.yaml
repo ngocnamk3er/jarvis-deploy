@@ -3,6 +3,16 @@ kind: Kustomization
 
 resources:
 - ../../base
+- scaledobject.yaml
+# The replica count belongs to the ScaledObject here: a Deployment that also sets it would be put back to 1 every time
+# the app is synced. Staging has no KEDA and keeps the 1 from the base.
+patches:
+- target:
+    kind: Deployment
+    name: backend
+  patch: |-
+    - op: remove
+      path: /spec/replicas
 images:
 - name: jarvis-backend
   newName: host.minikube.internal:5050/root/jarvis-backend

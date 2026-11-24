@@ -1,0 +1,57 @@
+# Adds backend replicas when the ones running are holding as much as they will take. Same idea as the conversation-service
+# ScaledObject: scale on the number of requests in flight and on the refusals, not on CPU. The backend reports both at
+# /metrics (app/core/load_shed.py) and the small Prometheus in monitoring/ hands them to KEDA, which turns them into an HPA.
+# The replica count is the largest of what the triggers ask for.
+#
+#  1. Quick requests in flight (class "default", limit 17): 12 per replica, about 70% of the limit, so a replica is added
+#     before anybody is refused.
+#  2. Chat runs in flight (class "chat", limit 20): 14 per replica. A chat run holds its slot for the whole run, and uses
+#     almost no CPU while it waits for the model, which is exactly what a CPU target cannot see.
+#  3. Requests refused (503) per second, 2 per replica: any sustained refusal means the replicas are full.
+#
+# What this does NOT give: a run lives in one replica. If that replica crashes, its runs end, and the browser cannot
+# reattach. A replica that is removed (scale-down, rolling update) is not a crash: it stops taking requests and finishes
+# its runs first (terminationGracePeriodSeconds 900, SHUTDOWN_DRAIN_SECONDS). Stop, the sandbox ceiling and the
+# background research tasks work across replicas (jarvis-backend SCALE-OUT.md).
+#
+# Scale-down is slow and gentle on purpose: five minutes below target, then one replica a minute, so a replica is not
+# taken away from under chats that began when the load was high.
+#
+# maxReplicaCount 3: one replica is about one core (the ceiling is ~130-150 req/s each), and three of them ask as much of
+# conversation-service as its own three replicas can serve. More would only move the bottleneck. The sandbox ceiling
+# (AGENTSANDBOX_MAX_PODS) is shared by all replicas, so it does not grow with them.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: backend
+  namespace: jarvis
+spec:
+  scaleTargetRef:
+    name: backend
+  minReplicaCount: 1
+  maxReplicaCount: 3
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 60
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.monitoring.svc.cluster.local:9090
+        query: sum(jarvis_inflight_requests{app="backend",class="default"})
+        threshold: "12"
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.monitoring.svc.cluster.local:9090
+        query: sum(jarvis_inflight_requests{app="backend",class="chat"})
+        threshold: "14"
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.monitoring.svc.cluster.local:9090
+        query: sum(rate(jarvis_shed_requests_total{app="backend"}[30s]))
+        threshold: "2"
